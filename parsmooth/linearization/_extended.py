@@ -32,10 +32,9 @@ def linearize(f, x, q, sqrt=False):
         m_q, cov_q, chol_q = q
         if not sqrt:
             return _linearize_callable(f, m_x, m_q) + (chol_q,)
-        else:
-            raise NotImplementedError("Not implemented yet")
-    else:
+
         raise NotImplementedError("Not implemented yet")
+    raise NotImplementedError("Not implemented yet")
 
 
 def _linearize_callable(f, x, q):
