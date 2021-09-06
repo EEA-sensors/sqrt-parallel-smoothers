@@ -49,10 +49,10 @@ def linearize_callable(f, x, q, get_sigma_points, sqrt):
         update_vectors = xq_pts.wc ** 0.5 * (f_pts - f_mean[None, :])
         chol_L = cholesky_update_many(F_x @ chol_x, update_vectors.T, -1.)
         return F_x, F_q, f_mean, chol_L
-    else:
-        Phi = _cov(xq_pts.wc, f_pts, f_mean, f_pts, f_mean)
-        L = Phi - F_x @ x.cov @ F_x.T - F_q @ q.cov @ F_q.T
-        return F_x, F_q, f_mean, L
+
+    Phi = _cov(xq_pts.wc, f_pts, f_mean, f_pts, f_mean)
+    L = Phi - F_x @ x.cov @ F_x.T - F_q @ q.cov @ F_q.T
+    return F_x, F_q, f_mean, L
 
 
 def _concatenate_mvns(x, q):

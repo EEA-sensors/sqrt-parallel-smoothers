@@ -24,8 +24,7 @@ def filtering_operator(elem1, elem2, sqrt=False):
     """
     if not sqrt:
         return _standard_filtering_operator(elem1, elem2)
-    else:
-        return _sqrt_filtering_operator(elem1, elem2)
+    return _sqrt_filtering_operator(elem1, elem2)
 
 
 def smoothing_operator(elem1, elem2, sqrt=False):
@@ -48,8 +47,7 @@ def smoothing_operator(elem1, elem2, sqrt=False):
     """
     if not sqrt:
         return _standard_smoothing_operator(elem1, elem2)
-    else:
-        return _sqrt_smoothing_operator(elem1, elem2)
+    return _sqrt_smoothing_operator(elem1, elem2)
 
 
 def _standard_filtering_operator(elem1, elem2):

@@ -33,8 +33,7 @@ def linearize(f, x, q, sqrt=False):
     """
     if callable(f):
         return linearize_callable(f, x, q, _get_sigma_points, sqrt)
-    else:
-        raise NotImplementedError("Not implemented yet")
+    raise NotImplementedError("Not implemented yet")
 
 
 def _get_sigma_points(mvn: MVNParams) -> Tuple[SigmaPoints, jnp.ndarray]:
