@@ -1,4 +1,5 @@
 jax[cpu]
+pylint
 pytest
 pytest-cov
 pytest-forked
