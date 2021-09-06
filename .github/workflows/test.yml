@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dev environment & blackjax
+      - name: Install dev environment & parsmooth
         run: |
           python -m pip install --upgrade pip
           pip install .

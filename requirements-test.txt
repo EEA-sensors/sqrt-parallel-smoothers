@@ -1,2 +1,6 @@
 jax[cpu]
 pytest
+pytest-cov
+pytest-forked
+pytest-html
+pytest-xdist
