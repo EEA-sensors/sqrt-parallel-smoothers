@@ -17,9 +17,9 @@ def linear_function(x, q, a, b, c):
     return a @ x + b @ q + c
 
 
-@pytest.mark.parametrize("dim_x", [1, 2, 3])
+@pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_q", [1, 2, 3])
-@pytest.mark.parametrize("seed", [0, 42, 666])
+@pytest.mark.parametrize("seed", [0, 42])
 @pytest.mark.parametrize("method", [extended, cubature])
 @pytest.mark.parametrize("use_chol", [True, False])
 def test_linear(dim_x, dim_q, seed, method, use_chol):

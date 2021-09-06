@@ -12,7 +12,7 @@ def config():
 
 
 @pytest.mark.parametrize("dim_x", [1, 2, 3])
-@pytest.mark.parametrize("seed", [0, 42, 666])
+@pytest.mark.parametrize("seed", [0, 42])
 def test_predict_standard_vs_sqrt(dim_x, seed):
     np.random.seed(seed)
     x, chol_x, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
@@ -24,7 +24,7 @@ def test_predict_standard_vs_sqrt(dim_x, seed):
     np.testing.assert_allclose(x.cov, chol_x.chol @ chol_x.chol.T, atol=1e-5)
 
 
-@pytest.mark.parametrize("dim_x", [1, 2, 3])
+@pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_y", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
 def test_update_standard_vs_sqrt(dim_x, dim_y, seed):
