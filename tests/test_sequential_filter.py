@@ -1,10 +1,8 @@
 import jax
 import numpy as np
-
-from parsmooth._base import MVNParams
-from parsmooth.sequential._filter import _sqrt_predict, _standard_predict, _sqrt_update, _standard_update
 import pytest
 
+from parsmooth.sequential._filter import _sqrt_predict, _standard_predict, _sqrt_update, _standard_update
 from tests._test_utils import get_system
 
 

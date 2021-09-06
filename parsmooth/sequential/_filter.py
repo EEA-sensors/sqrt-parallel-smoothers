@@ -1,9 +1,8 @@
-from jax.experimental.host_callback import id_print
+import jax.numpy as jnp
 from jax.scipy.linalg import solve, solve_triangular
 
 from parsmooth._base import MVNParams
 from parsmooth._math_utils import cholesky_update_many, tria
-import jax.numpy as jnp
 
 
 def filter(observations, transition_function, observation_function, linearization_method, sqrt, nominal_trajectory):
