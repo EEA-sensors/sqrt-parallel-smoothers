@@ -21,8 +21,11 @@ def linear_function(x, q, a, b, c):
 @pytest.mark.parametrize("dim_q", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
 @pytest.mark.parametrize("method", [extended, cubature])
-@pytest.mark.parametrize("use_chol", [True, False])
-def test_linear(dim_x, dim_q, seed, method, use_chol):
+@pytest.mark.parametrize("sqrt", [True, False])
+def test_linear(dim_x, dim_q, seed, method, sqrt):
+    if method is extended and sqrt:
+        pytest.skip("Not yet implemented")
+
     np.random.seed(seed)
     a = np.random.randn(dim_x, dim_x)
     b = np.random.randn(dim_x, dim_q)
@@ -37,7 +40,7 @@ def test_linear(dim_x, dim_q, seed, method, use_chol):
     chol_q = np.random.rand(dim_q, dim_q)
     chol_q[np.triu_indices(dim_q, 1)] = 0
 
-    if use_chol:
+    if sqrt:
         x = MVNParams(m_x, None, chol_x)
         q = MVNParams(m_q, None, chol_q)
     else:
@@ -46,7 +49,7 @@ def test_linear(dim_x, dim_q, seed, method, use_chol):
 
     fun = partial(linear_function, a=a, b=b, c=c)
 
-    F_x, F_q, remainder, L = method(fun, x, q)
+    F_x, F_q, remainder, L = method(fun, x, q, sqrt)
 
     x_prime = np.random.randn(dim_x)
     q_prime = np.random.randn(dim_q)
