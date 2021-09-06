@@ -4,7 +4,7 @@ import jax
 import numpy as np
 import pytest
 
-from parsmooth.base import MVNParams
+from parsmooth._base import MVNParams
 from parsmooth.linearization import extended, cubature
 
 
@@ -53,12 +53,6 @@ def test_linear(dim_x, dim_q, seed, method, use_chol):
 
     expected = fun(x_prime, q_prime)
     actual = F_x @ (x_prime - m_x) + F_q @ (q_prime - m_q) + remainder
-    print()
-    print(L)
-    print()
-    print(chol_x @ chol_x.T)
-    print()
-    print(chol_q @ chol_q.T)
 
     np.testing.assert_allclose(a, F_x, atol=1e-7)
     np.testing.assert_allclose(b, F_q, atol=1e-7)

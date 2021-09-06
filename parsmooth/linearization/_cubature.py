@@ -3,7 +3,7 @@ from typing import Tuple
 import jax.numpy as jnp
 import numpy as np
 
-from parsmooth.base import MVNParams
+from parsmooth._base import MVNParams
 from parsmooth.linearization._sigma_points import SigmaPoints, linearize_callable
 
 

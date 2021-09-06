@@ -6,9 +6,9 @@ import numpy as np
 from jax.scipy.linalg import block_diag
 from jax.scipy.linalg import solve_triangular
 
-from parsmooth.base import MVNParams
+from parsmooth._base import MVNParams
+from parsmooth._math_utils import cholesky_update_many
 from parsmooth.linearization._common import fix_mvn
-from tensorflow_probability.substrates.jax.math import cholesky_update
 
 
 class SigmaPoints(NamedTuple):
@@ -21,14 +21,6 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
     one = (x_pts - x_mean[None, :]).T * wc[None, :]
     two = y_points - y_mean[None, :]
     return jnp.dot(one, two)
-
-
-def scan_chol_update(chol, update_vectors):
-    def body(carry, inp):
-        carry = cholesky_update(carry, inp, -1)
-        return carry, None
-
-    return jax.lax.scan(body, chol, update_vectors)
 
 
 def linearize_callable(f, x, q, get_sigma_points, sqrt):
@@ -55,7 +47,7 @@ def linearize_callable(f, x, q, get_sigma_points, sqrt):
 
     if sqrt:
         update_vectors = xq_pts.wc ** 0.5 * (f_pts - f_mean[None, :])
-        chol_L = scan_chol_update(F_x @ chol_x, update_vectors)
+        chol_L = cholesky_update_many(F_x @ chol_x, update_vectors.T, -1.)
         return F_x, F_q, f_mean, chol_L
     else:
         Phi = _cov(xq_pts.wc, f_pts, f_mean, f_pts, f_mean)
@@ -64,7 +56,7 @@ def linearize_callable(f, x, q, get_sigma_points, sqrt):
 
 
 def _concatenate_mvns(x, q):
-    # This code implicitly assumes that X and Q are independent Multivariate Gaussians.
+    # This code implicitly assumes that X and Q are independent multivariate Gaussians.
     m_x, cov_x, chol_x = x
     m_q, cov_q, chol_q = q
 

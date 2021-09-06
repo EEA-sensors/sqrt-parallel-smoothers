@@ -1,6 +1,6 @@
 from jax import numpy as jnp
 
-from parsmooth.base import MVNParams
+from parsmooth._base import MVNParams
 
 
 def fix_mvn(x):
