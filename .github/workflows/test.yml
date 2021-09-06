@@ -28,7 +28,7 @@ jobs:
           pip install -r requirements-test.txt
       - name: Run pylint on the repo
         run: |
-          pylint parsmooth
+          pylint parsmooth --exit-zero
       - name: Run the tests with pytest
         run: |
           pytest -n 4 -vv --cov=parsmooth --cov-report=xml --cov-report=term tests
