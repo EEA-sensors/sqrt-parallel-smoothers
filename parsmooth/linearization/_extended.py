@@ -2,17 +2,17 @@ from typing import Any, Tuple
 
 import jax
 
-from parsmooth.linearization._common import fix_mvn
+from parsmooth._base import FunctionalModel
 
 
-def linearize(f, x, q, sqrt=False):
+def linearize(f, x, sqrt=False):
     """
     Extended linearization for a non-linear function f(x, q). If the function is linear, JAX Jacobian calculation will
     simply return the matrices without additional complexity.
 
     Parameters
     ----------
-    f: Callable
+    f: FunctionalModel or ConditionalMomentsModel
         The function to be called on x and q
     x: MVNParams
         x-coordinate state at which to linearize f
@@ -28,13 +28,13 @@ def linearize(f, x, q, sqrt=False):
     chol_q or cov_q: jnp.ndarray
         Either the cholesky or the full-rank modified covariance matrix.
     """
-    if callable(f):
+    if isinstance(f, FunctionalModel):
+        f, q = f
         m_x, *_ = x
-        q = fix_mvn(q)
         m_q, cov_q, chol_q = q
-        if not sqrt:
-            return _standard_linearize_callable(f, m_x, m_q, cov_q)
-        return _sqrt_linearize_callable(f, m_x, m_q, chol_q)
+        if sqrt:
+            return _sqrt_linearize_callable(f, m_x, m_q, chol_q)
+        return _standard_linearize_callable(f, m_x, m_q, cov_q)
 
     raise NotImplementedError("Not implemented yet")
 

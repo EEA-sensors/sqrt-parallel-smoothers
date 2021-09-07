@@ -24,6 +24,21 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
 
 
 def linearize_callable(f, x, q, get_sigma_points, sqrt):
+    F_x, F_q, xq_pts, f_pts, f_mean = _linearize_callable_common(f, x, q, get_sigma_points)
+    m_q, *_ = q
+    if sqrt:
+        m_x, _, chol_x = x
+        update_vectors = jnp.sqrt(xq_pts.wc[:, None]) * (f_pts - f_mean[None, :])
+        chol_L = cholesky_update_many(F_x @ chol_x, update_vectors, -1.)
+        return F_x, chol_L, f_mean - F_x @ m_x - F_q @ m_q
+    m_x, cov_x, _ = x
+    Phi = _cov(xq_pts.wc, f_pts, f_mean, f_pts, f_mean)
+    L = Phi - F_x @ x.cov @ F_x.T + F_q @ q.cov @ F_q.T
+
+    return F_x, L, f_mean - F_x @ m_x - F_q @ m_q
+
+
+def _linearize_callable_common(f, x, q, get_sigma_points):
     x = fix_mvn(x)
     q = fix_mvn(q)
     m_x, chol_x, _ = x
@@ -35,7 +50,6 @@ def linearize_callable(f, x, q, get_sigma_points, sqrt):
 
     x_pts, q_pts = jnp.split(xq_pts.points, [dim_x], axis=1)
     ux_pts, uq_pts = jnp.split(u_pts, [dim_x], axis=1)
-    x_mean = jnp.dot(xq_pts.wm, x_pts)
 
     f_pts = jax.vmap(f)(x_pts, q_pts)
     f_mean = jnp.dot(xq_pts.wm, f_pts)
@@ -45,16 +59,7 @@ def linearize_callable(f, x, q, get_sigma_points, sqrt):
 
     F_x = solve_triangular(x.chol, Psi_x, trans="T", lower=True).T
     F_q = solve_triangular(q.chol, Psi_q, trans="T", lower=True).T
-
-    if sqrt:
-        update_vectors = jnp.sqrt(xq_pts.wc[:, None]) * (f_pts - f_mean[None, :])
-        chol_L = cholesky_update_many(F_x @ chol_x, update_vectors, -1.)
-        return F_x, chol_L, f_mean - F_x @ m_x - F_q @ m_q
-
-    Phi = _cov(xq_pts.wc, f_pts, f_mean, f_pts, f_mean)
-    Psi = _cov(xq_pts.wc, f_pts, f_mean, x_pts, x_mean)
-    L = Phi + F_x @ x.cov @ F_x.T + F_q @ q.cov @ F_q.T
-    return F_x, L, f_mean - F_x @ m_x - F_q @ m_q
+    return F_x, F_q, xq_pts, f_pts, f_mean
 
 
 def _concatenate_mvns(x, q):

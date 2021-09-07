@@ -29,6 +29,18 @@ def test_predict_standard_vs_sqrt(dim_x, seed):
     np.testing.assert_allclose(x.cov, chol_x.chol @ chol_x.chol.T, atol=1e-5)
 
 
+@pytest.mark.parametrize("dim_x", [1, 2, 3])
+@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("method", [_sqrt_predict, _standard_predict])
+def test_predict_standard_vs_sqrt_value(dim_x, seed, method):
+    np.random.seed(seed)
+    x, chol_x, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
+    x = MVNParams(x.mean, x.cov, chol_x.chol)
+    next_x = method(F, cholQ, b, x)
+
+    np.testing.assert_allclose(next_x.mean, F @ x.mean + b, atol=1e-5)
+
+
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_y", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
@@ -41,6 +53,23 @@ def test_update_standard_vs_sqrt(dim_x, dim_y, seed):
 
     np.testing.assert_allclose(x.cov, chol_x.chol @ chol_x.chol.T, atol=1e-5)
     np.testing.assert_allclose(x.mean, chol_x.mean, atol=1e-5)
+
+
+@pytest.mark.parametrize("dim_x", [1, 3])
+@pytest.mark.parametrize("dim_y", [1, 2, 3])
+@pytest.mark.parametrize("seed", [0, 42])
+def test_update_standard_vs_sqrt_no_noise(dim_x, dim_y, seed):
+    np.random.seed(seed)
+    x, chol_x, H, R, cholR, c, y = get_system(dim_x, dim_y)
+    R *= 1e9
+    cholR *= 1e9
+    next_x = _standard_update(H, R, c, x, y)
+    next_chol_x = _sqrt_update(H, cholR, c, chol_x, y)
+
+    np.testing.assert_allclose(x.cov, next_x.cov, atol=1e-3)
+    np.testing.assert_allclose(x.mean, next_x.mean, atol=1e-3)
+    np.testing.assert_allclose(chol_x.chol @ chol_x.chol.T, next_chol_x.chol @ next_chol_x.chol.T, atol=1e-3)
+    np.testing.assert_allclose(x.mean, next_x.mean, atol=1e-3)
 
 
 @pytest.mark.parametrize("dim_x", [1, 3])

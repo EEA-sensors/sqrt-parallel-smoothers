@@ -4,7 +4,7 @@ import jax
 import numpy as np
 import pytest
 
-from parsmooth._base import MVNParams
+from parsmooth._base import MVNParams, FunctionalModel
 from parsmooth.linearization import extended, cubature
 
 
@@ -23,6 +23,7 @@ def linear_function(x, q, a, b, c):
 @pytest.mark.parametrize("method", [extended, cubature])
 @pytest.mark.parametrize("sqrt", [True, False])
 def test_linear(dim_x, dim_q, seed, method, sqrt):
+    # TODO: use get_system to reduce the number of lines
     np.random.seed(seed)
     a = np.random.randn(dim_x, dim_x)
     b = np.random.randn(dim_x, dim_q)
@@ -46,7 +47,9 @@ def test_linear(dim_x, dim_q, seed, method, sqrt):
 
     fun = partial(linear_function, a=a, b=b, c=c)
 
-    F_x, Q_lin, remainder = method(fun, x, q, sqrt)
+    fun_model = FunctionalModel(fun, q)
+
+    F_x, Q_lin, remainder = method(fun_model, x, sqrt)
     if sqrt:
         Q_lin = Q_lin @ Q_lin.T
     x_prime = np.random.randn(dim_x)

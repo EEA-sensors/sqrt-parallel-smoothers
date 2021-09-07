@@ -3,11 +3,11 @@ from typing import Tuple
 import jax.numpy as jnp
 import numpy as np
 
-from parsmooth._base import MVNParams
+from parsmooth._base import MVNParams, FunctionalModel, ConditionalMomentsModel
 from parsmooth.linearization._sigma_points import SigmaPoints, linearize_callable
 
 
-def linearize(f, x, q, sqrt=False):
+def linearize(f, x, sqrt=False):
     """
     Cubature linearization for a non-linear function f(x, q). While this may look inefficient for functions with
     additive noise, JAX relies on XLA which compresses linear operations. This means that in practice our code will only
@@ -15,7 +15,7 @@ def linearize(f, x, q, sqrt=False):
 
     Parameters
     ----------
-    f: Callable
+    f: FunctionalModel or ConditionalMomentsModel
         The function to be called on x and q
     x: MVNParams
         x-coordinate state at which to linearize f
@@ -31,7 +31,8 @@ def linearize(f, x, q, sqrt=False):
     chol_q or cov_q: jnp.ndarray
         Either the cholesky or the full-rank modified covariance matrix.
     """
-    if callable(f):
+    if isinstance(f, FunctionalModel):
+        f, q = f
         return linearize_callable(f, x, q, _get_sigma_points, sqrt)
     raise NotImplementedError("Not implemented yet")
 

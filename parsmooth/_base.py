@@ -12,3 +12,8 @@ class MVNParams(NamedTuple):
 class FunctionalModel(NamedTuple):
     function: Callable
     mvn: MVNParams
+
+
+class ConditionalMomentsModel(NamedTuple):
+    conditional_mean: Callable
+    conditional_variance: Callable

@@ -8,9 +8,13 @@ from parsmooth._base import MVNParams, FunctionalModel
 from parsmooth._utils import cholesky_update_many, tria, none_or_shift, none_or_concat
 
 
-def filtering(observations: jnp.ndarray, x0: MVNParams, transition_model: FunctionalModel,
+def filtering(observations: jnp.ndarray,
+              x0: MVNParams,
+              transition_model: FunctionalModel,
               observation_model: FunctionalModel,
-              linearization_method: Callable, sqrt: bool, nominal_trajectory: Optional[jnp.ndarray] = None):
+              linearization_method: Callable,
+              sqrt: bool,
+              nominal_trajectory: Optional[jnp.ndarray] = None):
     f, mvn_Q = transition_model
     h, mvn_R = observation_model
 
