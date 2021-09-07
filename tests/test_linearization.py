@@ -23,9 +23,6 @@ def linear_function(x, q, a, b, c):
 @pytest.mark.parametrize("method", [extended, cubature])
 @pytest.mark.parametrize("sqrt", [True, False])
 def test_linear(dim_x, dim_q, seed, method, sqrt):
-    if method is extended and sqrt:
-        pytest.skip("Not yet implemented")
-
     np.random.seed(seed)
     a = np.random.randn(dim_x, dim_x)
     b = np.random.randn(dim_x, dim_q)
@@ -49,14 +46,15 @@ def test_linear(dim_x, dim_q, seed, method, sqrt):
 
     fun = partial(linear_function, a=a, b=b, c=c)
 
-    F_x, F_q, remainder, L = method(fun, x, q, sqrt)
-
+    F_x, Q_lin, remainder = method(fun, x, q, sqrt)
+    if sqrt:
+        Q_lin = Q_lin @ Q_lin.T
     x_prime = np.random.randn(dim_x)
-    q_prime = np.random.randn(dim_q)
 
-    expected = fun(x_prime, q_prime)
-    actual = F_x @ (x_prime - m_x) + F_q @ (q_prime - m_q) + remainder
+    expected = fun(x_prime, m_q)
+    actual = F_x @ x_prime + remainder
 
     np.testing.assert_allclose(a, F_x, atol=1e-7)
-    np.testing.assert_allclose(b, F_q, atol=1e-7)
+    expected_Q = (b @ chol_q) @ (b @ chol_q).T
+    np.testing.assert_allclose(expected_Q, Q_lin, atol=1e-7)
     np.testing.assert_allclose(expected, actual, atol=1e-7)

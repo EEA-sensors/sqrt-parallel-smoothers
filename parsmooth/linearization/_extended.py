@@ -1,3 +1,5 @@
+from typing import Any, Tuple
+
 import jax
 
 from parsmooth.linearization._common import fix_mvn
@@ -31,21 +33,25 @@ def linearize(f, x, q, sqrt=False):
         q = fix_mvn(q)
         m_q, cov_q, chol_q = q
         if not sqrt:
-            return _linearize_callable(f, m_x, m_q) + (chol_q,)
+            return _standard_linearize_callable(f, m_x, m_q, cov_q)
+        return _sqrt_linearize_callable(f, m_x, m_q, chol_q)
 
-        raise NotImplementedError("Not implemented yet")
     raise NotImplementedError("Not implemented yet")
 
 
-def _linearize_callable(f, x, q):
+def _linearize_callable_common(f, x, q) -> Tuple[Any, Any, Any]:
     dim_x = x.shape[0]
     dim_q = q.shape[0]
-
     if dim_q > dim_x:
-        F_x, F_q = jax.jacrev(f, (0, 1))(x, q)
-    else:
-        F_x, F_q = jax.jacfwd(f, (0, 1))(x, q)
+        return f(x, q), *jax.jacrev(f, (0, 1))(x, q)  # noqa: this really is a 3-tuple.
+    return f(x, q), *jax.jacfwd(f, (0, 1))(x, q)  # noqa: this really is a 3-tuple.
 
-    res = f(x, q)
 
-    return F_x, F_q, res
+def _standard_linearize_callable(f, x, q, Q):
+    res, F_x, F_q = _linearize_callable_common(f, x, q)
+    return F_x, F_q @ Q @ F_q.T, res - F_x @ x
+
+
+def _sqrt_linearize_callable(f, x, q, cholQ):
+    res, F_x, F_q = _linearize_callable_common(f, x, q)
+    return F_x, F_q @ cholQ, res - F_x @ x

@@ -1,20 +1,36 @@
+from typing import Callable, Optional
+
 import jax.numpy as jnp
 from jax.scipy.linalg import solve, solve_triangular
 
-from parsmooth._base import MVNParams
+from parsmooth._base import MVNParams, FunctionalModel
 from parsmooth._math_utils import cholesky_update_many, tria
 
 
-def filter(observations, transition_function, observation_function, linearization_method, sqrt, nominal_trajectory):
-    pass
+def filtering(observations: jnp.ndarray, transition_model: FunctionalModel, observation_model: FunctionalModel,
+              linearization_method: Callable, sqrt: bool, nominal_trajectory: Optional[jnp.ndarray] = None):
+    predict = _standard_predict if not sqrt else _sqrt_predict
+    update = _standard_update if not sqrt else _sqrt_update
 
+    f, mvn_Q = transition_model
+    h, mvn_R = observation_model
 
-def _standard_filter():
-    pass
+    def predict(F_x, F_q, mvn_Q, b, x):
+        if sqrt:
+            return _sqrt_predict(F_x, mvn_Q.chol, b, x)
+        return _standard_predict(F_x, mvn_Q.cov, b, x)
 
+    def body(x, inp):
+        y, predict_ref, update_ref = inp
+        if predict_ref is None:
+            predict_ref = x
 
-def _sqrt_filter():
-    pass
+        F_x, F_q, b, _ = linearization_method(f, nominal_trajectory, mvn_Q, sqrt)
+
+        if sqrt:
+            x = _sqrt_predict(F_x, mvn_Q.chol, b, x)
+        else:
+            x = _standard_predict(F_x, mvn_Q.cov, b, x)
 
 
 def _standard_predict(F, Q, b, x):
