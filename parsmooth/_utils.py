@@ -73,3 +73,18 @@ def _cholesky_update(chol, update_vector, multiplier=1.):
     new_chol = _set_diagonal(new_chol, new_diag)
     new_chol = _set_triu(new_chol, 0.)
     return new_chol
+
+
+def none_or_shift(x, shift):
+    if x is None:
+        return None
+    if shift > 0:
+        return x[shift:]
+    return x[:shift]
+
+
+def none_or_concat(x, y):
+    if x is None or y is None:
+        return None
+
+    return jnp.concatenate([x[None, ...], y])

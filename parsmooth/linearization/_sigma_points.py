@@ -7,7 +7,7 @@ from jax.scipy.linalg import block_diag
 from jax.scipy.linalg import solve_triangular
 
 from parsmooth._base import MVNParams
-from parsmooth._math_utils import cholesky_update_many
+from parsmooth._utils import cholesky_update_many
 from parsmooth.linearization._common import fix_mvn
 
 

@@ -1,36 +1,54 @@
 from typing import Callable, Optional
 
+import jax
 import jax.numpy as jnp
 from jax.scipy.linalg import solve, solve_triangular
 
 from parsmooth._base import MVNParams, FunctionalModel
-from parsmooth._math_utils import cholesky_update_many, tria
+from parsmooth._utils import cholesky_update_many, tria, none_or_shift, none_or_concat
 
 
-def filtering(observations: jnp.ndarray, transition_model: FunctionalModel, observation_model: FunctionalModel,
+def filtering(observations: jnp.ndarray, x0: MVNParams, transition_model: FunctionalModel,
+              observation_model: FunctionalModel,
               linearization_method: Callable, sqrt: bool, nominal_trajectory: Optional[jnp.ndarray] = None):
-    predict = _standard_predict if not sqrt else _sqrt_predict
-    update = _standard_update if not sqrt else _sqrt_update
-
     f, mvn_Q = transition_model
     h, mvn_R = observation_model
 
-    def predict(F_x, F_q, mvn_Q, b, x):
+    if sqrt:
+        x0 = MVNParams(x0.mean, None, x0.chol)
+    else:
+        x0 = MVNParams(x0.mean, x0.cov)
+
+    def predict(F_x, cov_or_chol, b, x):
         if sqrt:
-            return _sqrt_predict(F_x, mvn_Q.chol, b, x)
-        return _standard_predict(F_x, mvn_Q.cov, b, x)
+            return _sqrt_predict(F_x, cov_or_chol, b, x)
+        return _standard_predict(F_x, cov_or_chol, b, x)
+
+    def update(H_x, cov_or_chol, c, x, y):
+        if sqrt:
+            return _sqrt_update(H_x, cov_or_chol, c, x, y)
+        return _standard_update(H_x, cov_or_chol, c, x, y)
 
     def body(x, inp):
         y, predict_ref, update_ref = inp
+
         if predict_ref is None:
             predict_ref = x
+        F_x, cov_or_chol_Q, b = linearization_method(f, predict_ref, mvn_Q, sqrt)
+        x = predict(F_x, cov_or_chol_Q, b, x)
 
-        F_x, F_q, b, _ = linearization_method(f, nominal_trajectory, mvn_Q, sqrt)
+        if update_ref is None:
+            update_ref = x
+        H_x, cov_or_chol_R, c = linearization_method(h, update_ref, mvn_R, sqrt)
+        x = update(F_x, cov_or_chol_R, b, x, y)
+        return x, x
 
-        if sqrt:
-            x = _sqrt_predict(F_x, mvn_Q.chol, b, x)
-        else:
-            x = _standard_predict(F_x, mvn_Q.cov, b, x)
+    predict_traj = none_or_shift(nominal_trajectory, -1)
+    update_traj = none_or_shift(nominal_trajectory, 1)
+
+    _, xs = jax.lax.scan(body, x0, (observations, predict_traj, update_traj))
+    xs = MVNParams(*(none_or_concat(i, j) for i, j in zip(x0, xs)))
+    return xs
 
 
 def _standard_predict(F, Q, b, x):

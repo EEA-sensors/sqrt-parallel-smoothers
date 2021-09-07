@@ -2,7 +2,7 @@ import jax
 import numpy as np
 import pytest
 
-from parsmooth._math_utils import _cholesky_update, cholesky_update_many
+from parsmooth._utils import _cholesky_update, cholesky_update_many
 
 
 @pytest.fixture(scope="session")

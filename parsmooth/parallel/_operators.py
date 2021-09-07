@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
 
-from parsmooth._math_utils import tria
+from parsmooth._utils import tria
 
 
 def filtering_operator(elem1, elem2, sqrt=False):
