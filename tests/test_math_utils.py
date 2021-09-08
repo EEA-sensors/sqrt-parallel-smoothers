@@ -1,6 +1,7 @@
 import jax
 import numpy as np
 import pytest
+import tensorflow_probability.substrates.jax as tfp
 
 from parsmooth._utils import _cholesky_update, cholesky_update_many
 
@@ -25,8 +26,10 @@ def test_cholesky_update(multiplier, seed, dim_x):
         pytest.skip("random vectors do not result in a positive definite matrix.")
 
     cholRes = _cholesky_update(cholQ, v, multiplier)
+    tfpRes = tfp.math.cholesky_update(cholQ, v, multiplier)
 
     np.testing.assert_allclose(cholRes @ cholRes.T, expected, rtol=1e-4)
+    np.testing.assert_allclose(cholRes, tfpRes, atol=1e-6, rtol=1e-4)
 
 
 @pytest.mark.parametrize("multiplier", [1., -0.1])
