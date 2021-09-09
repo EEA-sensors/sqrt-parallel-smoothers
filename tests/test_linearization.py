@@ -48,7 +48,7 @@ def test_linear(dim_x, dim_q, seed, method, sqrt):
     fun = partial(linear_function, a=a, b=b, c=c)
 
     fun_model = FunctionalModel(fun, q)
-    F_x, Q_lin, remainder = method(fun_model, x, sqrt)  # change : delete sqrt
+    F_x, Q_lin, remainder = method(fun_model, x, sqrt)
     if sqrt:
         Q_lin = Q_lin @ Q_lin.T
     x_prime = np.random.randn(dim_x)
