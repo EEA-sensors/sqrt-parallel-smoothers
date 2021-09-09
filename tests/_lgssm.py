@@ -39,7 +39,7 @@ def observation_function(x, r, H):
     return jnp.dot(H, x) + r
 
 
-def get_data(x0, A, H, R, Q, b, c, T, random_state=None):
+def get_data(x0, A, H, R, Q, b, c, T, random_state=None, chol_R=None):
     """
     Parameters
     ----------
@@ -61,6 +61,8 @@ def get_data(x0, A, H, R, Q, b, c, T, random_state=None):
         number of time steps
     random_state: np.random.RandomState or int, optional
         numpy random state
+    chol_R: array_like, optional
+        cholesky of R
 
     Returns
     -------
@@ -75,7 +77,8 @@ def get_data(x0, A, H, R, Q, b, c, T, random_state=None):
     R_shape = R.shape[0]
     Q_shape = Q.shape[0]
     normals = random_state.randn(T, Q_shape + R_shape).astype(np.float32)
-    chol_R = np.linalg.cholesky(R)
+    if chol_R is None:
+        chol_R = np.linalg.cholesky(R)
     chol_Q = np.linalg.cholesky(Q)
 
     x = np.copy(x0).astype(np.float32)

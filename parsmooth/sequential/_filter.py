@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from jax.scipy.linalg import solve, solve_triangular
 
 from parsmooth._base import MVNParams, FunctionalModel
-from parsmooth._utils import cholesky_update_many, tria, none_or_shift, none_or_concat
+from parsmooth._utils import tria, none_or_shift, none_or_concat
 
 
 def filtering(observations: jnp.ndarray,
@@ -15,8 +15,6 @@ def filtering(observations: jnp.ndarray,
               linearization_method: Callable,
               sqrt: bool,
               nominal_trajectory: Optional[jnp.ndarray] = None):
-    f, mvn_Q = transition_model
-    h, mvn_R = observation_model
 
     if sqrt:
         x0 = MVNParams(x0.mean, None, x0.chol)
@@ -38,13 +36,15 @@ def filtering(observations: jnp.ndarray,
 
         if predict_ref is None:
             predict_ref = x
-        F_x, cov_or_chol_Q, b = linearization_method(f, predict_ref, mvn_Q, sqrt)
+        F_x, cov_or_chol_Q, b = linearization_method(transition_model, predict_ref,
+                                                     sqrt)
         x = predict(F_x, cov_or_chol_Q, b, x)
 
         if update_ref is None:
             update_ref = x
-        H_x, cov_or_chol_R, c = linearization_method(h, update_ref, mvn_R, sqrt)
-        x = update(F_x, cov_or_chol_R, b, x, y)
+        H_x, cov_or_chol_R, c = linearization_method(observation_model, update_ref,
+                                                     sqrt)
+        x = update(H_x, cov_or_chol_R, c, x, y)
         return x, x
 
     predict_traj = none_or_shift(nominal_trajectory, -1)
@@ -59,7 +59,7 @@ def _standard_predict(F, Q, b, x):
     m, P, _ = x
 
     m = F @ m + b
-    P = P + F @ Q @ F.T
+    P = Q + F @ P @ F.T
 
     return MVNParams(m, P)
 
@@ -82,7 +82,7 @@ def _sqrt_predict(F, cholQ, b, x):
     m, _, cholP = x
 
     m = F @ m + b
-    cholP = cholesky_update_many(cholP, (F @ cholQ).T, 1.)
+    cholP = tria(jnp.concatenate([F @ cholP, cholQ], axis=1))
 
     return MVNParams(m, None, cholP)
 
@@ -95,8 +95,8 @@ def _sqrt_update(H, cholR, c, x, y):
     y_hat = H @ m + c
     y_diff = y - y_hat
 
-    M = jnp.block([[cholR, H @ cholP],
-                   [jnp.zeros_like(cholP, shape=(nx, ny)), cholP]])
+    M = jnp.block([[H @ cholP, cholR],
+                   [cholP, jnp.zeros_like(cholP, shape=(nx, ny))]])
     S = tria(M)
 
     cholP = S[ny:, ny:]
