@@ -20,7 +20,7 @@ def linear_function(x, q, a, b, c):
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_q", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-@pytest.mark.parametrize("method", [extended, cubature])
+@pytest.mark.parametrize("method", [cubature, extended])
 @pytest.mark.parametrize("sqrt", [True, False])
 def test_linear(dim_x, dim_q, seed, method, sqrt):
     # TODO: use get_system to reduce the number of lines
@@ -48,7 +48,6 @@ def test_linear(dim_x, dim_q, seed, method, sqrt):
     fun = partial(linear_function, a=a, b=b, c=c)
 
     fun_model = FunctionalModel(fun, q)
-
     F_x, Q_lin, remainder = method(fun_model, x, sqrt)
     if sqrt:
         Q_lin = Q_lin @ Q_lin.T
@@ -56,8 +55,9 @@ def test_linear(dim_x, dim_q, seed, method, sqrt):
 
     expected = fun(x_prime, m_q)
     actual = F_x @ x_prime + remainder
+    expected_Q = (b @ chol_q) @ (b @ chol_q).T
 
     np.testing.assert_allclose(a, F_x, atol=1e-7)
-    expected_Q = (b @ chol_q) @ (b @ chol_q).T
-    np.testing.assert_allclose(expected_Q, Q_lin, atol=1e-7)
     np.testing.assert_allclose(expected, actual, atol=1e-7)
+    np.testing.assert_allclose(expected_Q, Q_lin, atol=1e-7)
+

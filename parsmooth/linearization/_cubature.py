@@ -61,7 +61,7 @@ def _get_sigma_points(mvn: MVNParams) -> Tuple[SigmaPoints, jnp.ndarray]:
 
     sigma_points = jnp.repeat(mean.reshape(1, -1), wm.shape[0], axis=0) + jnp.dot(chol, xi.T).T
 
-    return SigmaPoints(sigma_points, wm, wc), xi
+    return SigmaPoints(sigma_points, wm, wc)
 
 
 def _cubature_weights(n_dim: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:

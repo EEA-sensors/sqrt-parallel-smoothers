@@ -3,11 +3,10 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.scipy.linalg import block_diag
-from jax.scipy.linalg import solve_triangular
+from jax.scipy.linalg import cho_solve, block_diag
 
 from parsmooth._base import MVNParams
-from parsmooth._utils import cholesky_update_many
+from parsmooth._utils import cholesky_update_many, tria
 from parsmooth.linearization._common import fix_mvn
 
 
@@ -24,42 +23,42 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
 
 
 def linearize_callable(f, x, q, get_sigma_points, sqrt):
-    F_x, F_q, xq_pts, f_pts, f_mean = _linearize_callable_common(f, x, q, get_sigma_points)
+    F_x, F_q, xq_pts, f_pts, m_f = _linearize_callable_common(f, x, q, get_sigma_points)
     m_q, *_ = q
     if sqrt:
         m_x, _, chol_x = x
-        update_vectors = jnp.sqrt(xq_pts.wc[:, None]) * (f_pts - f_mean[None, :])
-        chol_L = cholesky_update_many(F_x @ chol_x, update_vectors, -1.)
-        return F_x, chol_L, f_mean - F_x @ m_x - F_q @ m_q
+        sqrt_Phi = jnp.sqrt(xq_pts.wc[:, None]) * (f_pts - m_f[None, :])
+        sqrt_Phi = tria(sqrt_Phi.T)
+        chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
+        return F_x, chol_L, m_f - F_x @ m_x
     m_x, cov_x, _ = x
-    Phi = _cov(xq_pts.wc, f_pts, f_mean, f_pts, f_mean)
-    L = Phi - F_x @ x.cov @ F_x.T + F_q @ q.cov @ F_q.T
+    Phi = _cov(xq_pts.wc, f_pts, m_f, f_pts, m_f)
+    L = Phi - F_x @ cov_x @ F_x.T
 
-    return F_x, L, f_mean - F_x @ m_x - F_q @ m_q
+    return F_x, L, m_f - F_x @ m_x
 
 
 def _linearize_callable_common(f, x, q, get_sigma_points):
     x = fix_mvn(x)
     q = fix_mvn(q)
-    m_x, chol_x, _ = x
-    m_q, chol_q, _ = q
+    m_x, _, chol_x = x
+    m_q, _, chol_q = q
     dim_x = m_x.shape[0]
     xq = _concatenate_mvns(x, q)
 
-    xq_pts, u_pts = get_sigma_points(xq)
+    xq_pts = get_sigma_points(xq)
 
     x_pts, q_pts = jnp.split(xq_pts.points, [dim_x], axis=1)
-    ux_pts, uq_pts = jnp.split(u_pts, [dim_x], axis=1)
 
     f_pts = jax.vmap(f)(x_pts, q_pts)
-    f_mean = jnp.dot(xq_pts.wm, f_pts)
+    m_f = jnp.dot(xq_pts.wm, f_pts)
 
-    Psi_x = _cov(xq_pts.wc, ux_pts, jnp.zeros_like(m_x), f_pts, f_mean)
-    Psi_q = _cov(xq_pts.wc, uq_pts, jnp.zeros_like(m_q), f_pts, f_mean)
+    Psi_x = _cov(xq_pts.wc, x_pts, m_x, f_pts, m_f)
+    Psi_q = _cov(xq_pts.wc, q_pts, m_q, f_pts, m_f)
 
-    F_x = solve_triangular(x.chol, Psi_x, trans="T", lower=True).T
-    F_q = solve_triangular(q.chol, Psi_q, trans="T", lower=True).T
-    return F_x, F_q, xq_pts, f_pts, f_mean
+    F_x = cho_solve((chol_x, True), Psi_x).T
+    F_q = cho_solve((chol_q, True), Psi_q).T
+    return F_x, F_q, xq_pts, f_pts, m_f
 
 
 def _concatenate_mvns(x, q):
