@@ -11,8 +11,8 @@ def smoother(transition_model, filter_trajectory, nominal_trajectory, linearizat
 
     def smooth_one(F_x, cov_or_chol, b, xf, xs):
         if sqrt:
-            return _sqrt_smooth_one(F_x, cov_or_chol, b, xf, xs)
-        return _standard_smooth_one(F_x, cov_or_chol, b, xf, xs)
+            return _sqrt_smooth(F_x, cov_or_chol, b, xf, xs)
+        return _standard_smooth(F_x, cov_or_chol, b, xf, xs)
 
     def body(smoothed, inputs):
         filtered, ref = inputs
@@ -32,7 +32,7 @@ def smoother(transition_model, filter_trajectory, nominal_trajectory, linearizat
     return smoothed_states
 
 
-def _standard_smooth_one(F, Q, b, xf, xs):
+def _standard_smooth(F, Q, b, xf, xs):
     mf, Pf, _ = xf
     ms, Ps, _ = xs
 
@@ -47,7 +47,7 @@ def _standard_smooth_one(F, Q, b, xf, xs):
     return MVNParams(ms, Ps)
 
 
-def _sqrt_smooth_one(F, cholQ, b, xf, xs):
+def _sqrt_smooth(F, cholQ, b, xf, xs):
     mf, _, cholPf = xf
     ms, _, cholPs = xs
 

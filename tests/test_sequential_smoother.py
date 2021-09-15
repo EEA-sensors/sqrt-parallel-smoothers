@@ -9,7 +9,7 @@ from parsmooth._base import FunctionalModel, MVNParams
 from parsmooth.linearization import cubature, extended
 from parsmooth.linearization._common import fix_mvn
 from parsmooth.sequential._filter import filtering
-from parsmooth.sequential._smoother import _standard_smooth_one, _sqrt_smooth_one
+from parsmooth.sequential._smoother import _standard_smooth, _sqrt_smooth
 from tests._lgssm import get_data, transition_function as lgssm_f, observation_function as lgssm_h
 from tests._test_utils import get_system
 
@@ -30,8 +30,8 @@ def test_smooth_one_standard_vs_sqrt(dim_x, seed):
     xf, chol_xf, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
     xs, chol_xs, *_ = get_system(dim_x, dim_x)
 
-    next_x = _standard_smooth_one(F, Q, b, xf, xs)
-    next_chol_x = _sqrt_smooth_one(F, cholQ, b, chol_xf, chol_xs)
+    next_x = _standard_smooth(F, Q, b, xf, xs)
+    next_chol_x = _sqrt_smooth(F, cholQ, b, chol_xf, chol_xs)
 
     np.testing.assert_allclose(next_x.mean, next_chol_x.mean, atol=1e-5)
     np.testing.assert_allclose(next_x.cov, next_chol_x.chol @ next_chol_x.chol.T, atol=1e-3)
@@ -39,12 +39,12 @@ def test_smooth_one_standard_vs_sqrt(dim_x, seed):
 
 @pytest.mark.parametrize("dim_x", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-@pytest.mark.parametrize("method", [_standard_smooth_one, _sqrt_smooth_one])
+@pytest.mark.parametrize("method", [_standard_smooth, _sqrt_smooth])
 def test_smooth_one_value(dim_x, seed, method):
     np.random.seed(seed)
     xf, chol_xf, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
     xs, chol_xs, *_ = get_system(dim_x, dim_x)
-    if method is _sqrt_smooth_one:
+    if method is _sqrt_smooth:
         next_x = method(F, cholQ, b, chol_xf, chol_xs)
     else:
         next_x = method(F, Q, b, xf, xs)
@@ -63,7 +63,7 @@ def test_smooth_one_value(dim_x, seed, method):
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_y", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-@pytest.mark.parametrize("method", [_standard_smooth_one, _sqrt_smooth_one])
+@pytest.mark.parametrize("method", [_standard_smooth, _sqrt_smooth])
 def test_smooth_one_standard_vs_sqrt_no_noise(dim_x, dim_y, seed, method):
     np.random.seed(seed)
     xf, chol_xf, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
@@ -71,7 +71,7 @@ def test_smooth_one_standard_vs_sqrt_no_noise(dim_x, dim_y, seed, method):
     Q = 0. * Q
     cholQ = 0. * cholQ
 
-    if method is _sqrt_smooth_one:
+    if method is _sqrt_smooth:
         next_x = method(F, cholQ, b, chol_xf, chol_xs)
     else:
         next_x = method(F, Q, b, xf, xs)
@@ -90,7 +90,7 @@ def test_smooth_one_standard_vs_sqrt_no_noise(dim_x, dim_y, seed, method):
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_y", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-@pytest.mark.parametrize("method", [_standard_smooth_one, _sqrt_smooth_one])
+@pytest.mark.parametrize("method", [_standard_smooth, _sqrt_smooth])
 def test_smooth_one_standard_vs_sqrt_infinite_noise(dim_x, dim_y, seed, method):
     np.random.seed(seed)
     xf, chol_xf, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
@@ -98,7 +98,7 @@ def test_smooth_one_standard_vs_sqrt_infinite_noise(dim_x, dim_y, seed, method):
     Q = 1e12 * Q
     cholQ = 1e6 * cholQ
 
-    if method is _sqrt_smooth_one:
+    if method is _sqrt_smooth:
         next_x = method(F, cholQ, b, chol_xf, chol_xs)
     else:
         next_x = method(F, Q, b, xf, xs)
