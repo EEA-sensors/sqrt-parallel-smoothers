@@ -5,9 +5,9 @@ import jax.numpy as jnp
 import numpy as np
 from jax.scipy.linalg import cho_solve, block_diag
 
-from parsmooth._base import MVNParams
+from parsmooth._base import MVNSqrt, are_inputs_compatible
 from parsmooth._utils import cholesky_update_many, tria
-from parsmooth.linearization._common import fix_mvn
+from parsmooth.linearization._common import get_mvnsqrt
 
 
 class SigmaPoints(NamedTuple):
@@ -22,16 +22,18 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
     return jnp.dot(one, two)
 
 
-def linearize_callable(f, x, q, get_sigma_points, sqrt):
+def linearize_callable(f, x, q, get_sigma_points):
+    are_inputs_compatible(x, q)
+
     F_x, F_q, xq_pts, f_pts, m_f = _linearize_callable_common(f, x, q, get_sigma_points)
-    m_q, *_ = q
-    if sqrt:
-        m_x, _, chol_x = x
+    m_q, _ = q
+    if isinstance(x, MVNSqrt):
+        m_x, chol_x = x
         sqrt_Phi = jnp.sqrt(xq_pts.wc[:, None]) * (f_pts - m_f[None, :])
         sqrt_Phi = tria(sqrt_Phi.T)
         chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
         return F_x, chol_L, m_f - F_x @ m_x
-    m_x, cov_x, _ = x
+    m_x, cov_x = x
     Phi = _cov(xq_pts.wc, f_pts, m_f, f_pts, m_f)
     L = Phi - F_x @ cov_x @ F_x.T
 
@@ -39,10 +41,10 @@ def linearize_callable(f, x, q, get_sigma_points, sqrt):
 
 
 def _linearize_callable_common(f, x, q, get_sigma_points):
-    x = fix_mvn(x)
-    q = fix_mvn(q)
-    m_x, _, chol_x = x
-    m_q, _, chol_q = q
+    x = get_mvnsqrt(x)
+    q = get_mvnsqrt(q)
+    m_x, chol_x = x
+    m_q, chol_q = q
     dim_x = m_x.shape[0]
     xq = _concatenate_mvns(x, q)
 
@@ -63,15 +65,8 @@ def _linearize_callable_common(f, x, q, get_sigma_points):
 
 def _concatenate_mvns(x, q):
     # This code implicitly assumes that X and Q are independent multivariate Gaussians.
-    m_x, cov_x, chol_x = x
-    m_q, cov_q, chol_q = q
-
-    if chol_x is None:
-        chol_x = jnp.linalg.cholesky(cov_x)
-
-    if chol_q is None:
-        chol_q = jnp.linalg.cholesky(cov_q)
-
+    m_x, chol_x = x
+    m_q, chol_q = q
     m_xq = jnp.concatenate([m_x, m_q])
     chol_xq = block_diag(chol_x, chol_q)
-    return MVNParams(m_xq, None, chol_xq)
+    return MVNSqrt(m_xq, chol_xq)

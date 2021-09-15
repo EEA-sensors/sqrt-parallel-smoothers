@@ -1,6 +1,6 @@
 import numpy as np
 
-from parsmooth._base import MVNParams
+from parsmooth._base import MVNStandard, MVNSqrt
 
 
 def get_system(dim_x, dim_y):
@@ -17,6 +17,6 @@ def get_system(dim_x, dim_y):
     c = np.random.randn(dim_y)
     y = np.random.randn(dim_y)
 
-    chol_x = MVNParams(m, None, cholP)
-    x = MVNParams(m, P)
+    chol_x = MVNSqrt(m, cholP)
+    x = MVNStandard(m, P)
     return x, chol_x, H, R, cholR, c, y

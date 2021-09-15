@@ -2,10 +2,10 @@ from typing import Any, Tuple
 
 import jax
 
-from parsmooth._base import FunctionalModel
+from parsmooth._base import FunctionalModel, MVNSqrt, are_inputs_compatible
 
 
-def linearize(f, x, sqrt=False):
+def linearize(f, x):
     """
     Extended linearization for a non-linear function f(x, q). If the function is linear, JAX Jacobian calculation will
     simply return the matrices without additional complexity.
@@ -14,12 +14,8 @@ def linearize(f, x, sqrt=False):
     ----------
     f: FunctionalModel or ConditionalMomentsModel
         The function to be called on x and q
-    x: MVNParams
+    x: MVNStandard or MVNSqrt
         x-coordinate state at which to linearize f
-    q: MVNParams
-        q-coordinate state at which to linearize f
-    sqrt: bool, optional
-        return the sqrt of the modified noise covariance. Default is False
 
     Returns
     -------
@@ -30,11 +26,12 @@ def linearize(f, x, sqrt=False):
     """
     if isinstance(f, FunctionalModel):
         f, q = f
-        m_x, *_ = x
-        m_q, cov_q, chol_q = q
-        if sqrt:
-            return _sqrt_linearize_callable(f, m_x, m_q, chol_q)
-        return _standard_linearize_callable(f, m_x, m_q, cov_q)
+        are_inputs_compatible(x, q)
+
+        m_x, _ = x
+        if isinstance(x, MVNSqrt):
+            return _sqrt_linearize_callable(f, m_x, *q)
+        return _standard_linearize_callable(f, m_x, *q)
 
     raise NotImplementedError("Not implemented yet")
 

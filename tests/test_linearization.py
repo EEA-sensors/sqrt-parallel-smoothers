@@ -4,7 +4,7 @@ import jax
 import numpy as np
 import pytest
 
-from parsmooth._base import MVNParams, FunctionalModel
+from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt
 from parsmooth.linearization import extended, cubature
 
 
@@ -39,16 +39,16 @@ def test_linear(dim_x, dim_q, seed, method, sqrt):
     chol_q[np.triu_indices(dim_q, 1)] = 0
 
     if sqrt:
-        x = MVNParams(m_x, None, chol_x)
-        q = MVNParams(m_q, None, chol_q)
+        x = MVNSqrt(m_x, chol_x)
+        q = MVNSqrt(m_q, chol_q)
     else:
-        x = MVNParams(m_x, chol_x @ chol_x.T)
-        q = MVNParams(m_q, chol_q @ chol_q.T)
+        x = MVNStandard(m_x, chol_x @ chol_x.T)
+        q = MVNStandard(m_q, chol_q @ chol_q.T)
 
     fun = partial(linear_function, a=a, b=b, c=c)
 
     fun_model = FunctionalModel(fun, q)
-    F_x, Q_lin, remainder = method(fun_model, x, sqrt)
+    F_x, Q_lin, remainder = method(fun_model, x)
     if sqrt:
         Q_lin = Q_lin @ Q_lin.T
     x_prime = np.random.randn(dim_x)
