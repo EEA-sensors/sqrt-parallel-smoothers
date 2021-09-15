@@ -9,7 +9,7 @@ from parsmooth._base import FunctionalModel, MVNParams
 from parsmooth.linearization import cubature, extended
 from parsmooth.linearization._common import fix_mvn
 from parsmooth.sequential._filter import filtering
-from parsmooth.sequential._smoother import _standard_smooth, _sqrt_smooth
+from parsmooth.sequential._smoother import _standard_smooth, _sqrt_smooth, smoother
 from tests._lgssm import get_data, transition_function as lgssm_f, observation_function as lgssm_h
 from tests._test_utils import get_system
 
@@ -111,9 +111,9 @@ def test_smooth_one_standard_vs_sqrt_infinite_noise(dim_x, dim_y, seed, method):
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_y", [2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-def test_all_smoother_agree(dim_x, dim_y, seed):
+def test_all_smoothers_agree(dim_x, dim_y, seed):
     np.random.seed(seed)
-    T = 25
+    T = 5
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
     x0 = MVNParams(x0.mean, x0.cov, chol_x0.chol)
@@ -128,7 +128,8 @@ def test_all_smoother_agree(dim_x, dim_y, seed):
         for sqrt in [True, False]:
             filtered_states = filtering(observations, x0, transition_model, observation_model, method,
                                         sqrt, None)
-            res.append(filtered_states)
+            smoothed_states = smoother(transition_model, filtered_states, None, method, sqrt)
+            res.append(smoothed_states)
 
     for res_1, res_2 in zip(res[:-1], res[1:]):
         np.testing.assert_array_almost_equal(res_1.mean, res_2.mean, decimal=3)
@@ -139,7 +140,7 @@ def test_all_smoother_agree(dim_x, dim_y, seed):
 @pytest.mark.parametrize("seed", [0, 42])
 def test_all_smoothers_with_nominal_traj(dim_x, dim_y, seed):
     np.random.seed(seed)
-    T = 25
+    T = 5
     m_nominal = np.random.randn(T + 1, dim_x)
     P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T + 1, axis=0)
     cholP_nominal = P_nominal
@@ -154,12 +155,10 @@ def test_all_smoothers_with_nominal_traj(dim_x, dim_y, seed):
     transition_model = FunctionalModel(partial(lgssm_f, A=F), MVNParams(b, Q, cholQ))
     observation_model = FunctionalModel(partial(lgssm_h, H=H), MVNParams(c, R, cholR))
 
-    res = []
     for method in LIST_LINEARIZATIONS:
         for sqrt in [True, False]:
             filtered_states = filtering(observations, x0, transition_model, observation_model, method,
                                         sqrt, None)
-            filtered_states_nominal = filtering(observations, x0, transition_model, observation_model, method,
-                                                sqrt, x_nominal)
-            np.testing.assert_allclose(filtered_states_nominal.mean, filtered_states.mean, atol=1e-3)
-            res.append(filtered_states)
+            smoothed_states = smoother(transition_model, filtered_states, x_nominal, method, sqrt)
+            smoothed_states_nominal = smoother(transition_model, filtered_states, None, method, sqrt)
+            np.testing.assert_allclose(smoothed_states_nominal.mean, smoothed_states.mean, atol=1e-3)

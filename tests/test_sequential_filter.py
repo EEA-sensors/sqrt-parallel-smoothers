@@ -163,7 +163,7 @@ def test_filter_infinite_info(dim, seed, sqrt, linearization_method):
 @pytest.mark.parametrize("seed", [0, 42])
 def test_all_filters_agree(dim_x, dim_y, seed):
     np.random.seed(seed)
-    T = 25
+    T = 5
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
     x0 = MVNParams(x0.mean, x0.cov, chol_x0.chol)
@@ -189,8 +189,8 @@ def test_all_filters_agree(dim_x, dim_y, seed):
 @pytest.mark.parametrize("seed", [0, 42])
 def test_all_filters_with_nominal_traj(dim_x, dim_y, seed):
     np.random.seed(seed)
-    T = 25
-    m_nominal = np.random.randn(T+1, dim_x)
+    T = 5
+    m_nominal = np.random.randn(T + 1, dim_x)
     P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T+1, axis=0)
     cholP_nominal = P_nominal
 

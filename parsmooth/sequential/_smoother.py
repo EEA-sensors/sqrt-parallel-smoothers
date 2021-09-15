@@ -7,7 +7,7 @@ from parsmooth._utils import tria, none_or_shift, none_or_concat
 
 
 def smoother(transition_model, filter_trajectory, nominal_trajectory, linearization_method, sqrt):
-    last_state = jax.tree_map(lambda z: jnp.take(z, -1), filter_trajectory)
+    last_state = jax.tree_map(lambda z: z[-1], filter_trajectory)
 
     def smooth_one(F_x, cov_or_chol, b, xf, xs):
         if sqrt:
