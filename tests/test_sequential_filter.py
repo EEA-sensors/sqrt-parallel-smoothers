@@ -76,7 +76,6 @@ def test_update_value(dim_x, dim_y, seed, method):
     np.testing.assert_allclose(next_x.cov, x.cov - K @ H @ x.cov, atol=1e-5)
 
 
-
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_y", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
@@ -183,3 +182,34 @@ def test_all_filters_agree(dim_x, dim_y, seed):
 
     for res_1, res_2 in zip(res[:-1], res[1:]):
         np.testing.assert_array_almost_equal(res_1.mean, res_2.mean, decimal=3)
+
+
+@pytest.mark.parametrize("dim_x", [1, 3])
+@pytest.mark.parametrize("dim_y", [2, 3])
+@pytest.mark.parametrize("seed", [0, 42])
+def test_all_filters_with_nominal_traj(dim_x, dim_y, seed):
+    np.random.seed(seed)
+    T = 25
+    m_nominal = np.random.randn(T+1, dim_x)
+    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T+1, axis=0)
+    cholP_nominal = P_nominal
+
+    x_nominal = MVNParams(m_nominal, P_nominal, cholP_nominal)
+
+    x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
+    x0 = MVNParams(x0.mean, x0.cov, chol_x0.chol)
+    _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
+
+    true_states, observations = get_data(x0.mean, F, H, R, Q, b, c, T)
+    transition_model = FunctionalModel(partial(lgssm_f, A=F), MVNParams(b, Q, cholQ))
+    observation_model = FunctionalModel(partial(lgssm_h, H=H), MVNParams(c, R, cholR))
+
+    res = []
+    for method in LIST_LINEARIZATIONS:
+        for sqrt in [True, False]:
+            filtered_states = filtering(observations, x0, transition_model, observation_model, method,
+                                        sqrt, None)
+            filtered_states_nominal = filtering(observations, x0, transition_model, observation_model, method,
+                                                sqrt, x_nominal)
+            np.testing.assert_allclose(filtered_states_nominal.mean, filtered_states.mean, atol=1e-3)
+            res.append(filtered_states)

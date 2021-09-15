@@ -14,7 +14,7 @@ def filtering(observations: jnp.ndarray,
               observation_model: FunctionalModel,
               linearization_method: Callable,
               sqrt: bool,
-              nominal_trajectory: Optional[jnp.ndarray] = None):
+              nominal_trajectory: Optional[MVNParams] = None):
 
     if sqrt:
         x0 = MVNParams(x0.mean, None, x0.chol)
@@ -51,7 +51,7 @@ def filtering(observations: jnp.ndarray,
     update_traj = none_or_shift(nominal_trajectory, 1)
 
     _, xs = jax.lax.scan(body, x0, (observations, predict_traj, update_traj))
-    xs = MVNParams(*(none_or_concat(i, j) for i, j in zip(x0, xs)))
+    xs = none_or_concat(xs, x0, 1)
     return xs
 
 
