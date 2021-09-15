@@ -115,13 +115,9 @@ def _sqrt_filtering_operator(elem1, elem2):
 
     A = A2 @ A1 - jlinalg.solve(Xi11, U1.T @ A2.T).T @ Xi21.T @ A1
     b = A2 @ (jnp.eye(nx) - jlinalg.solve(Xi11, U1.T).T @ Xi21.T) @ (b1 + U1 @ U1.T @ eta2) + b2
-    U = tria(jnp.concatenate([jlinalg.solve(Xi11, U1.T @ A2.T).T,
-                              U2],
-                             axis=1))
+    U = tria(jnp.concatenate([jlinalg.solve(Xi11, U1.T @ A2.T).T, U2], axis=1))
     eta = A1.T @ (jnp.eye(nx) - jlinalg.solve(Xi11.T, Xi21.T).T @ U1.T) @ (eta2 - Z2 @ Z2.T @ b1) + eta1
-    Z = tria(jnp.concatenate([A1.T @ Xi22,
-                              Z1],
-                             axis=1))
+    Z = tria(jnp.concatenate([A1.T @ Xi22, Z1], axis=1))
     return A, b, U, eta, Z
 
 
@@ -168,8 +164,6 @@ def _sqrt_smoothing_operator(elem1, elem2):
 
     g = E2 @ g1 + g2
     E = E2 @ E1
-    D = tria(jnp.concatenate([E2 @ D1,
-                              D2],
-                             axis=1))
+    D = tria(jnp.concatenate([E2 @ D1, D2], axis=1))
 
     return g, E, D
