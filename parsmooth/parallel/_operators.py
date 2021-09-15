@@ -151,30 +151,6 @@ def _standard_smoothing_operator(elem1, elem2):
 
 def _sqrt_smoothing_operator(elem1, elem2):
     """
-    Associative operator described in TODO: put the reference
-
-    Parameters
-    ----------
-    elem1: tuple of array
-        g_i, E_i, L_i
-    elem2: tuple of array
-        g_j, E_j, L_j
-
-    Returns
-    -------
-
-    """
-    g1, E1, L1 = elem1
-    g2, E2, L2 = elem2
-
-    g = E2 @ g1 + g2
-    E = E2 @ E1
-    L = E2 @ L1 @ E2.T + L2
-    return g, E, L
-
-
-def _sqrt_smoothing_operator(elem1, elem2):
-    """
 
     Parameters
     ----------
