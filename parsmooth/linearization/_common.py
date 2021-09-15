@@ -1,13 +1,11 @@
 from jax import numpy as jnp
 
-from parsmooth._base import MVNParams
+from parsmooth._base import MVNStandard, MVNSqrt
 
 
-def fix_mvn(x):
-    m_x, cov_x, chol_x = x
-
-    if chol_x is None:
-        chol_x = jnp.linalg.cholesky(cov_x)
-    if cov_x is None:
-        cov_x = chol_x @ chol_x.T
-    return MVNParams(m_x, cov_x, chol_x)
+def get_mvnsqrt(x: MVNStandard or MVNSqrt):
+    if isinstance(x, MVNSqrt):
+        return x
+    m_x, cov_x = x
+    chol_x = jnp.linalg.cholesky(cov_x)
+    return MVNSqrt(m_x, chol_x)

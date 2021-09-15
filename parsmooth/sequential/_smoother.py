@@ -1,16 +1,23 @@
+from typing import Optional, Callable
+
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlag
 
-from parsmooth._base import MVNParams
+from parsmooth._base import MVNStandard, MVNSqrt, are_inputs_compatible, FunctionalModel
 from parsmooth._utils import tria, none_or_shift, none_or_concat
 
 
-def smoother(transition_model, filter_trajectory, nominal_trajectory, linearization_method, sqrt):
+def smoother(transition_model: FunctionalModel, filter_trajectory: MVNSqrt or MVNStandard,
+             linearization_method: Callable, nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
     last_state = jax.tree_map(lambda z: z[-1], filter_trajectory)
 
+    if nominal_trajectory is not None:
+        are_inputs_compatible(filter_trajectory, nominal_trajectory)
+
     def smooth_one(F_x, cov_or_chol, b, xf, xs):
-        if sqrt:
+        are_inputs_compatible(xf, xs)
+        if isinstance(xf, MVNSqrt):
             return _sqrt_smooth(F_x, cov_or_chol, b, xf, xs)
         return _standard_smooth(F_x, cov_or_chol, b, xf, xs)
 
@@ -18,7 +25,7 @@ def smoother(transition_model, filter_trajectory, nominal_trajectory, linearizat
         filtered, ref = inputs
         if ref is None:
             ref = smoothed
-        F_x, cov_or_chol, b = linearization_method(transition_model, ref, sqrt)
+        F_x, cov_or_chol, b = linearization_method(transition_model, ref)
         smoothed_state = smooth_one(F_x, cov_or_chol, b, filtered, smoothed)
 
         return smoothed_state, smoothed_state
@@ -33,8 +40,8 @@ def smoother(transition_model, filter_trajectory, nominal_trajectory, linearizat
 
 
 def _standard_smooth(F, Q, b, xf, xs):
-    mf, Pf, _ = xf
-    ms, Ps, _ = xs
+    mf, Pf = xf
+    ms, Ps = xs
 
     mean_diff = ms - (b + F @ mf)
     S = F @ Pf @ F.T + Q
@@ -44,12 +51,12 @@ def _standard_smooth(F, Q, b, xf, xs):
     ms = mf + gain @ mean_diff
     Ps = Pf + gain @ cov_diff @ gain.T
 
-    return MVNParams(ms, Ps)
+    return MVNStandard(ms, Ps)
 
 
 def _sqrt_smooth(F, cholQ, b, xf, xs):
-    mf, _, cholPf = xf
-    ms, _, cholPs = xs
+    mf, cholPf = xf
+    ms, cholPs = xs
 
     nx = F.shape[0]
     Phi = jnp.block([[F @ cholPf, cholQ],
@@ -64,4 +71,4 @@ def _sqrt_smooth(F, cholQ, b, xf, xs):
     mean = mf + gain @ mean_diff
     chol = tria(jnp.concatenate([Phi22, gain @ cholPs], axis=1))
 
-    return MVNParams(mean, None, chol)
+    return MVNSqrt(mean, chol)
