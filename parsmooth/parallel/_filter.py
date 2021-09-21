@@ -77,16 +77,18 @@ def _standard_make_associative_filtering_params_first(linearization_method, tran
     P1 = F @ x0.cov @ F.T + Q
 
     S = H @ P1 @ H.T + R
-    K = jlinalg.solve(S, H @ P1, sym_pos=True).T
+    S_invH = jlinalg.solve(S, H, sym_pos=True)
+    K = (S_invH @ P1).T
     A = jnp.zeros(F.shape)
 
-    b = m1 + K @ (y - H @ m1 - c)
+    b_std = m1 + K @ (y - H @ m1 - c)
     C = P1 - (K @ S @ K.T)
 
-    eta = jnp.zeros(F.shape[0])
-    J = jnp.zeros(F.shape)
+    temp = (S_invH @ F).T
+    eta = temp @ (y - H @ b - c)
+    J = temp @ H @ F
 
-    return A, b, C, eta, J
+    return A, b_std, C, eta, J
 
 
 def _standard_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y, sqrt):
@@ -98,14 +100,14 @@ def _standard_make_associative_filtering_params_generic(linearization_method, tr
     S_invH = jlinalg.solve(S, H, sym_pos=True)
     K = (S_invH @ Q).T
     A = F - K @ H @ F
-    b = b + K @ (y - H @ b - c)
+    b_std = b + K @ (y - H @ b - c)
     C = Q - K @ H @ Q
 
     temp = (S_invH @ F).T
     eta = temp @ (y - H @ b - c)
     J = temp @ H @ F
 
-    return A, b, C, eta, J
+    return A, b_std, C, eta, J
 
 
 def _sqrt_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i, sqrt):
@@ -143,14 +145,17 @@ def _sqrt_make_associative_filtering_params_first(linearization_method, transiti
     K1 = jlinalg.solve(Psi11_.T, Psi21_.T).T
 
     A = jnp.zeros(F.shape)
-    b = m1 + K1 @ (y - H @ m1 - c)
+    b_sqr = m1 + K1 @ (y - H @ m1 - c)
     U = Psi22_
 
     Z1 = jlinalg.solve(Y1, H @ F).T
     eta = jlinalg.solve(Y1.T, Z1.T).T @ (y - H @ b - c)
-    Z = jnp.block([Z1, jnp.zeros((nx, nx - ny))])
+    if nx > ny:
+        Z = jnp.block([Z1, jnp.zeros((nx, nx - ny))])
+    else:
+        Z = jnp.block([Z1, jnp.zeros((nx, ny - nx))])
 
-    return A, b, U, eta, Z
+    return A, b_sqr, U, eta, Z
 
 
 def _sqrt_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y, sqrt):
@@ -168,13 +173,16 @@ def _sqrt_make_associative_filtering_params_generic(linearization_method, transi
     Y = Psi11
     K = jlinalg.solve(Psi11.T, Psi21.T).T
     A = F - K @ H @ F
-    b = c + K @ (y - H @ b - c)
+    b_sqr = b + K @ (y - H @ b - c)
     U = Psi22
 
     Z1 = jlinalg.solve(Y, H @ F).T
     eta = jlinalg.solve(Y.T, Z1.T).T @ (y - H @ b - c)
 
-    Z = jnp.block([Z1, jnp.zeros((nx, nx - ny))])
+    if nx > ny:
+        Z = jnp.block([Z1, jnp.zeros((nx, nx - ny))])
+    else:
+        Z = jnp.block([Z1, jnp.zeros((nx, ny - nx))])
 
-    return A, b, U, eta, Z
+    return A, b_sqr, U, eta, Z
 
