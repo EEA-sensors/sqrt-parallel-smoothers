@@ -1,6 +1,7 @@
 from functools import partial
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import pytest
 
@@ -32,14 +33,13 @@ def test_samples_marginals(dim_x, dim_y, seed, linearization, jax_seed):
     key = jax.random.PRNGKey(jax_seed)
 
     T = 10
-    N = 1_000
+    N = 50_000
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
     _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
 
     _, ys = get_data(x0.mean, F, H, R, Q, b, c, T)
     sqrt_transition_model = FunctionalModel(partial(lgssm_f, A=F), MVNSqrt(b, cholQ))
-    sqrt_observation_model = FunctionalModel(partial(lgssm_h, H=H), MVNSqrt(c, cholR))
 
     transition_model = FunctionalModel(partial(lgssm_f, A=F), MVNStandard(b, Q))
     observation_model = FunctionalModel(partial(lgssm_h, H=H), MVNStandard(c, R))
@@ -49,14 +49,14 @@ def test_samples_marginals(dim_x, dim_y, seed, linearization, jax_seed):
         smoothed_states = smoother(transition_model, filtered_states, method)
         samples = sampler(key, N, transition_model, filtered_states, method, smoothed_states)
 
-        sqrt_filtered_states = filtering(ys, chol_x0, sqrt_transition_model, sqrt_observation_model, method)
-        sqrt_smoothed_states = smoother(sqrt_transition_model, sqrt_filtered_states, method)
+        sqrt_filtered_states = MVNSqrt(filtered_states.mean, jax.vmap(jnp.linalg.cholesky)(filtered_states.cov))
+        sqrt_smoothed_states = MVNSqrt(smoothed_states.mean, jax.vmap(jnp.linalg.cholesky)(smoothed_states.cov))
         sqrt_samples = sampler(key, N, sqrt_transition_model, sqrt_filtered_states, method, sqrt_smoothed_states)
 
-        np.testing.assert_allclose(samples, sqrt_samples)
         np.testing.assert_allclose(samples.mean(-1), smoothed_states.mean, rtol=1e-2, atol=1e-2)
-        np.testing.assert_allclose(sqrt_samples.mean(-1), smoothed_states.mean, rtol=1e-2, atol=1e-2)
         np.testing.assert_allclose(samples.var(-1), np.diagonal(smoothed_states.cov, axis1=1, axis2=2),
+                                   rtol=1e-1, atol=5e-2)
+        np.testing.assert_allclose(sqrt_samples.mean(-1), sqrt_smoothed_states.mean,
                                    rtol=1e-2, atol=1e-2)
-        np.testing.assert_allclose(sqrt_samples.std(-1), np.diagonal(np.abs(sqrt_smoothed_states.chol),
-                                                                     axis1=1, axis2=2), rtol=1e-2, atol=1e-2)
+        np.testing.assert_allclose(sqrt_samples.var(-1), np.diagonal(smoothed_states.cov, axis1=1, axis2=2),
+                                   rtol=1e-1, atol=5e-2)
