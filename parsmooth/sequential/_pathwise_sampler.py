@@ -72,7 +72,7 @@ def _standard_sample(F, Q, b, xf, xs, key):
     S = F @ Pf @ F.T + Q
     gain = Pf @ jlag.solve(S, F, sym_pos=True).T
 
-    inc_Sig = Pf - gain @ S @ gain
+    inc_Sig = Pf - gain @ S @ gain.T
     inc_m = mf - gain @ (F @ mf + b)
 
     inc = _sample_mvn(key, MVNStandard(inc_m, inc_Sig))

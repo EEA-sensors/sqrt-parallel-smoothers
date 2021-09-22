@@ -32,7 +32,7 @@ def test_samples_marginals(dim_x, dim_y, seed, linearization, jax_seed):
     key = jax.random.PRNGKey(jax_seed)
 
     T = 10
-    N = 100_000
+    N = 1_000
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
     _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
@@ -53,9 +53,10 @@ def test_samples_marginals(dim_x, dim_y, seed, linearization, jax_seed):
         sqrt_smoothed_states = smoother(sqrt_transition_model, sqrt_filtered_states, method)
         sqrt_samples = sampler(key, N, sqrt_transition_model, sqrt_filtered_states, method, sqrt_smoothed_states)
 
-        # np.testing.assert_allclose(samples.nanmean(-1), smoothed_states.mean, rtol=1e-2, atol=1e-2)
+        np.testing.assert_allclose(samples, sqrt_samples)
+        np.testing.assert_allclose(samples.mean(-1), smoothed_states.mean, rtol=1e-2, atol=1e-2)
         np.testing.assert_allclose(sqrt_samples.mean(-1), smoothed_states.mean, rtol=1e-2, atol=1e-2)
-        # np.testing.assert_allclose(samples.var(-1), np.diagonal(smoothed_states.cov, axis1=1, axis2=2),
-        #                            rtol=1e-2, atol=1e-2)
+        np.testing.assert_allclose(samples.var(-1), np.diagonal(smoothed_states.cov, axis1=1, axis2=2),
+                                   rtol=1e-2, atol=1e-2)
         np.testing.assert_allclose(sqrt_samples.std(-1), np.diagonal(np.abs(sqrt_smoothed_states.chol),
                                                                      axis1=1, axis2=2), rtol=1e-2, atol=1e-2)
