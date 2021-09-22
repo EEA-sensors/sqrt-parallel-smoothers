@@ -26,12 +26,15 @@ def sampler(key: jnp.ndarray, n_samples: int, transition_model: FunctionalModel,
 
 
 def _sample_mvn(key: jnp.ndarray, x: MVNStandard or MVNSqrt):
+    m, cov_or_chol = x
+    eps = jax.random.normal(key, m.shape)
     if isinstance(x, MVNStandard):
-        return jax.random.multivariate_normal(key, *x)
+        L = jnp.linalg.cholesky(cov_or_chol)
     elif isinstance(x, MVNSqrt):
-        m, L = x
-        eps = jax.random.normal(key, x.mean.shape)
-        return m + L @ eps
+        L = cov_or_chol
+    else:
+        raise ValueError(f"`x` must be a MVNStandard or a MVNSqrt. {type(x)} was passed")
+    return m + L @ eps
 
 
 def _sampler(key: jnp.ndarray, transition_model: FunctionalModel,
@@ -48,15 +51,14 @@ def _sampler(key: jnp.ndarray, transition_model: FunctionalModel,
             return _sqrt_sample(F_x, cov_or_chol, b, xf, xs, op_key)
         return _standard_sample(F_x, cov_or_chol, b, xf, xs, op_key)
 
-    def body(smoothed, inputs):
+    def body(prev_xs, inputs):
         filtered, ref, op_key = inputs
         F_x, cov_or_chol, b = linearization_method(transition_model, ref)
-        smoothed_state = sample_one(F_x, cov_or_chol, b, filtered, smoothed, op_key)
+        sampled = sample_one(F_x, cov_or_chol, b, filtered, prev_xs, op_key)
 
-        return smoothed_state, smoothed_state
+        return sampled, sampled
 
     last_state_sample = _sample_mvn(keys[0], last_state)
-
     _, sampled_states = jax.lax.scan(body,
                                      last_state_sample,
                                      [none_or_shift(filter_trajectory, -1), none_or_shift(nominal_trajectory, -1),
@@ -69,6 +71,7 @@ def _sampler(key: jnp.ndarray, transition_model: FunctionalModel,
 
 def _standard_sample(F, Q, b, xf, xs, key):
     mf, Pf = xf
+
     S = F @ Pf @ F.T + Q
     gain = Pf @ jlag.solve(S, F, sym_pos=True).T
 
@@ -76,6 +79,7 @@ def _standard_sample(F, Q, b, xf, xs, key):
     inc_m = mf - gain @ (F @ mf + b)
 
     inc = _sample_mvn(key, MVNStandard(inc_m, inc_Sig))
+
     return gain @ xs + inc
 
 
@@ -89,9 +93,10 @@ def _sqrt_sample(F, cholQ, b, xf, xs, key):
     Phi11 = tria_Phi[:nx, :nx]
     Phi21 = tria_Phi[nx:, :nx]
     Phi22 = tria_Phi[nx:, nx:]
+    Phi12 = tria_Phi[:nx, nx:]
 
     gain = jlag.solve_triangular(Phi11, Phi21.T, trans=True, lower=True).T
-    inc_L = tria(jnp.concatenate([Phi22, gain @ Phi21], axis=1))
+    inc_L = tria(jnp.concatenate([Phi22, gain @ Phi12.T], axis=1))
     inc_m = mf - gain @ (F @ mf + b)
 
     inc = _sample_mvn(key, MVNSqrt(inc_m, inc_L))
