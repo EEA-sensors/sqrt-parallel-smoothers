@@ -1,47 +1,30 @@
+from typing import Callable, Optional
+
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
 
 from parsmooth.parallel._operators import filtering_operator
-from parsmooth._base import MVNParams
+from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
 from parsmooth._utils import tria
 
 
-def filter(observations, transition_model, observation_model, linearization_method, sqrt, nominal_trajectory, x0):
-
-    """ Computes the standard and sqrt version of parallel Kalman filter routine given a linearization
-         and returns a series of filtered_states TODO:reference
-        Parameters
-        ----------
-        observations: (n, K) array
-            array of n observations of dimension K
-        transition_model: FunctionalModel or ConditionalMomentsModel
-
-        observation_model: FunctionalModel or ConditionalMomentsModel
-
-        linearization_method: callable
-            one of taylor or sigma_points linearization method
-        nominal_trajectory: (n, D) array
-            points at which to compute the jacobians.
-        x0: MVNParams
-            prior belief on the initial state distribution
-        Returns
-        -------
-        filtered_states: MVNParams
-            list of filtered states
-        """
+def filtering(observations: jnp.ndarray,
+              x0: MVNStandard or MVNSqrt,
+              transition_model: FunctionalModel,
+              observation_model: FunctionalModel,
+              linearization_method: Callable,
+              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
 
     n_observations = observations.shape[0]
 
-    if sqrt:
-        x0 = MVNParams(x0.mean, None, x0.chol)
-    else:
-        x0 = MVNParams(x0.mean, x0.cov)
+    if nominal_trajectory is not None:
+        are_inputs_compatible(x0, nominal_trajectory)
 
     def make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i):
-        if sqrt:
-            return _sqrt_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i, sqrt)
-        return _standard_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i, sqrt)
+        if isinstance(x0, MVNSqrt):
+            return _sqrt_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i)
+        return _standard_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i)
 
     @jax.vmap
     def make_params(obs, i):
@@ -53,14 +36,14 @@ def filter(observations, transition_model, observation_model, linearization_meth
     return jax.vmap(MVNParams)(filtered_means, filtered_covariances)
 
 
-def _standard_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i, sqrt):
+def _standard_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i):
     predicate = i == 0
 
     def _first(_):
-        return _standard_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, sqrt)
+        return _standard_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y)
 
     def _generic(_):
-        return _standard_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y, sqrt)
+        return _standard_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y)
 
     return jax.lax.cond(predicate,
                     _first,
@@ -68,10 +51,10 @@ def _standard_make_associative_filtering_params(linearization_method, transition
                     None)
 
 
-def _standard_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, sqrt):
+def _standard_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y):
 
-    F, Q, b = linearization_method(transition_model, nominal_trajectory, sqrt)
-    H, R, c = linearization_method(observation_model, nominal_trajectory, sqrt)
+    F, Q, b = linearization_method(transition_model, nominal_trajectory)
+    H, R, c = linearization_method(observation_model, nominal_trajectory)
 
     m1 = F @ x0.mean + b
     P1 = F @ x0.cov @ F.T + Q
@@ -91,10 +74,10 @@ def _standard_make_associative_filtering_params_first(linearization_method, tran
     return A, b_std, C, eta, J
 
 
-def _standard_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y, sqrt):
+def _standard_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y):
 
-    F, Q, b = linearization_method(transition_model, nominal_trajectory, sqrt)
-    H, R, c = linearization_method(observation_model, nominal_trajectory, sqrt)
+    F, Q, b = linearization_method(transition_model, nominal_trajectory)
+    H, R, c = linearization_method(observation_model, nominal_trajectory)
 
     S = H @ Q @ H.T + R
     S_invH = jlinalg.solve(S, H, sym_pos=True)
@@ -110,15 +93,15 @@ def _standard_make_associative_filtering_params_generic(linearization_method, tr
     return A, b_std, C, eta, J
 
 
-def _sqrt_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i, sqrt):
+def _sqrt_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i):
 
     predicate = i == 0
 
     def _first(_):
-        return _sqrt_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, sqrt)
+        return _sqrt_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y)
 
     def _generic(_):
-        return _sqrt_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y, sqrt)
+        return _sqrt_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y)
 
     return jax.lax.cond(predicate,
                     _first,
@@ -126,10 +109,10 @@ def _sqrt_make_associative_filtering_params(linearization_method, transition_mod
                     None)
 
 
-def _sqrt_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, sqrt):
+def _sqrt_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y):
 
-    F, cholQ, b = linearization_method(transition_model, nominal_trajectory, sqrt)
-    H, cholR, c = linearization_method(observation_model, nominal_trajectory, sqrt)
+    F, cholQ, b = linearization_method(transition_model, nominal_trajectory)
+    H, cholR, c = linearization_method(observation_model, nominal_trajectory)
 
     nx = cholQ.shape[0]
     ny = cholR.shape[0]
@@ -144,7 +127,7 @@ def _sqrt_make_associative_filtering_params_first(linearization_method, transiti
     Y1 = Psi11_
     K1 = jlinalg.solve(Psi11_.T, Psi21_.T).T
 
-    A = jnp.zeros(F.shape)
+    A = jnp.zeros_like(F)
     b_sqr = m1 + K1 @ (y - H @ m1 - c)
     U = Psi22_
 
@@ -158,10 +141,10 @@ def _sqrt_make_associative_filtering_params_first(linearization_method, transiti
     return A, b_sqr, U, eta, Z
 
 
-def _sqrt_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y, sqrt):
+def _sqrt_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y):
 
-    F, cholQ, b = linearization_method(transition_model, nominal_trajectory, sqrt)
-    H, cholR, c = linearization_method(observation_model, nominal_trajectory, sqrt)
+    F, cholQ, b = linearization_method(transition_model, nominal_trajectory)
+    H, cholR, c = linearization_method(observation_model, nominal_trajectory)
 
     nx = cholQ.shape[0]
     ny = cholR.shape[0]

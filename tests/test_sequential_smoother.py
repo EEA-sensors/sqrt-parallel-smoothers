@@ -8,7 +8,7 @@ from jax.scipy.linalg import solve
 from parsmooth._base import FunctionalModel, MVNStandard, MVNSqrt
 from parsmooth.linearization import cubature, extended
 from parsmooth.sequential._filter import filtering
-from parsmooth.sequential._smoother import _standard_smooth, _sqrt_smooth, smoother
+from parsmooth.sequential._smoother import _standard_smooth, _sqrt_smooth, smoothing
 from tests._lgssm import get_data, transition_function as lgssm_f, observation_function as lgssm_h
 from tests._test_utils import get_system
 
@@ -140,11 +140,11 @@ def test_all_smoothers_agree(dim_x, dim_y, seed):
     for method in LIST_LINEARIZATIONS:
         filtered_states = filtering(observations, x0, transition_model, observation_model, method,
                                     None)
-        smoothed_states = smoother(transition_model, filtered_states, method, None)
+        smoothed_states = smoothing(transition_model, filtered_states, method, None)
 
         sqrt_filtered_states = filtering(observations, chol_x0, sqrt_transition_model, sqrt_observation_model, method,
                                          None)
-        sqrt_smoothed_states = smoother(sqrt_transition_model, sqrt_filtered_states, method, None)
+        sqrt_smoothed_states = smoothing(sqrt_transition_model, sqrt_filtered_states, method, None)
         res.append(smoothed_states)
         res.append(sqrt_smoothed_states)
 
@@ -176,13 +176,13 @@ def test_all_smoothers_with_nominal_traj(dim_x, dim_y, seed):
     observation_model = FunctionalModel(partial(lgssm_h, H=H), MVNStandard(c, R))
     for method in LIST_LINEARIZATIONS:
         filtered_states = filtering(observations, x0, transition_model, observation_model, method, None)
-        smoothed_states_nominal = smoother(transition_model, filtered_states, method, x_nominal)
-        smoothed_states = smoother(transition_model, filtered_states, method, None)
+        smoothed_states_nominal = smoothing(transition_model, filtered_states, method, x_nominal)
+        smoothed_states = smoothing(transition_model, filtered_states, method, None)
 
         sqrt_filtered_states = filtering(observations, chol_x0, sqrt_transition_model, sqrt_observation_model, method,
                                          None)
-        sqrt_smoothed_states_nominal = smoother(sqrt_transition_model, sqrt_filtered_states, method, sqrt_x_nominal)
-        sqrt_smoothed_states = smoother(sqrt_transition_model, sqrt_filtered_states, method, None)
+        sqrt_smoothed_states_nominal = smoothing(sqrt_transition_model, sqrt_filtered_states, method, sqrt_x_nominal)
+        sqrt_smoothed_states = smoothing(sqrt_transition_model, sqrt_filtered_states, method, None)
 
         np.testing.assert_allclose(smoothed_states_nominal.mean, smoothed_states.mean, atol=1e-3)
         np.testing.assert_allclose(sqrt_smoothed_states.mean, sqrt_smoothed_states_nominal.mean, atol=1e-3)

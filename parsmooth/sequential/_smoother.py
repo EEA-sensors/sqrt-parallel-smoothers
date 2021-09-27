@@ -8,8 +8,8 @@ from parsmooth._base import MVNStandard, MVNSqrt, are_inputs_compatible, Functio
 from parsmooth._utils import tria, none_or_shift, none_or_concat
 
 
-def smoother(transition_model: FunctionalModel, filter_trajectory: MVNSqrt or MVNStandard,
-             linearization_method: Callable, nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
+def smoothing(transition_model: FunctionalModel, filter_trajectory: MVNSqrt or MVNStandard,
+              linearization_method: Callable, nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
     last_state = jax.tree_map(lambda z: z[-1], filter_trajectory)
 
     if nominal_trajectory is not None:
