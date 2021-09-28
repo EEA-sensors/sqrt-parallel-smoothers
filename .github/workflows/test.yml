@@ -31,7 +31,7 @@ jobs:
           pylint parsmooth --exit-zero
       - name: Run the tests with pytest
         run: |
-          pytest -n 4 -vv --cov=parsmooth --cov-report=xml --cov-report=term tests
+          JAX_ENABLE_X64=true pytest -n 4 -vv --cov=parsmooth --cov-report=xml --cov-report=term tests
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
         with:
