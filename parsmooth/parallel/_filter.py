@@ -112,7 +112,7 @@ def _sqrt_associative_params_one(linearization_method, transition_model, observa
     eta = jlinalg.solve_triangular(Psi11, Z.T, trans=True, lower=True).T @ (y - H @ b - c)
 
     if nx > ny:
-        Z = jnp.block([Z, jnp.zeros((nx, nx - ny))])
+        Z = jnp.concatenate([Z, jnp.zeros((nx, nx - ny))], axis=1)
     else:
         pass
 
