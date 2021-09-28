@@ -4,9 +4,9 @@ import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
 
-from parsmooth.parallel._operators import filtering_operator
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
-from parsmooth._utils import tria
+from parsmooth._utils import tria, none_or_concat
+from parsmooth.parallel._operators import sqrt_filtering_operator, standard_filtering_operator
 
 
 def filtering(observations: jnp.ndarray,
@@ -15,76 +15,54 @@ def filtering(observations: jnp.ndarray,
               observation_model: FunctionalModel,
               linearization_method: Callable,
               nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
-
-    n_observations = observations.shape[0]
-
     if nominal_trajectory is not None:
         are_inputs_compatible(x0, nominal_trajectory)
 
-    def make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i):
-        if isinstance(x0, MVNSqrt):
-            return _sqrt_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i)
-        return _standard_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i)
+    if isinstance(x0, MVNSqrt):
+        associative_params = _sqrt_associative_params(linearization_method, transition_model, observation_model,
+                                                      nominal_trajectory, x0, observations)
+        _, filtered_means, filtered_chol, _, _ = jax.lax.associative_scan(jax.vmap(sqrt_filtering_operator),
+                                                                          associative_params)
+        res = jax.vmap(MVNSqrt)(filtered_means, filtered_chol)
 
-    @jax.vmap
-    def make_params(obs, i):
-        return make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, obs, i)
+    else:
+        associative_params = _standard_associative_params(linearization_method, transition_model, observation_model,
+                                                          nominal_trajectory, x0, observations)
+        _, filtered_means, filtered_cov, _, _ = jax.lax.associative_scan(jax.vmap(standard_filtering_operator),
+                                                                         associative_params)
+        res = jax.vmap(MVNStandard)(filtered_means, filtered_cov)
 
-    associative_params = make_params(observations, jnp.arange(n_observations))
-    _, filtered_means, filtered_covariances, _, _ = jax.lax.associative_scan(filtering_operator, *associative_params)
-
-    return jax.vmap(MVNParams)(filtered_means, filtered_covariances)
-
-
-def _standard_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i):
-    predicate = i == 0
-
-    def _first(_):
-        return _standard_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y)
-
-    def _generic(_):
-        return _standard_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y)
-
-    return jax.lax.cond(predicate,
-                    _first,
-                    _generic,
-                    None)
+    return none_or_concat(res, x0, position=1)
 
 
-def _standard_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y):
+def _standard_associative_params(linearization_method, transition_model, observation_model,
+                                 nominal_trajectory, x0, ys):
+    T = ys.shape[0]
+    n_k_1 = jax.tree_map(lambda z: z[:-1], nominal_trajectory)
+    n_k = jax.tree_map(lambda z: z[1:], nominal_trajectory)
 
-    F, Q, b = linearization_method(transition_model, nominal_trajectory)
-    H, R, c = linearization_method(observation_model, nominal_trajectory)
+    m0, P0 = x0
+    ms = jnp.concatenate([m0[None, ...], jnp.zeros_like(m0, shape=(T - 1,) + m0.shape)])
+    Ps = jnp.concatenate([P0[None, ...], jnp.zeros_like(P0, shape=(T - 1,) + P0.shape)])
 
-    m1 = F @ x0.mean + b
-    P1 = F @ x0.cov @ F.T + Q
+    vmapped_fn = jax.vmap(_standard_associative_params_one, in_axes=[None, None, None, 0, 0, 0, 0, 0])
+    return vmapped_fn(linearization_method, transition_model, observation_model, n_k_1, n_k, ms, Ps, ys)
 
-    S = H @ P1 @ H.T + R
+
+def _standard_associative_params_one(linearization_method, transition_model, observation_model, n_k_1, n_k, m, P, y):
+    F, Q, b = linearization_method(transition_model, n_k_1)
+    H, R, c = linearization_method(observation_model, n_k)
+
+    m = F @ m + b
+    P = F @ P @ F.T + Q
+
+    S = H @ P @ H.T + R
     S_invH = jlinalg.solve(S, H, sym_pos=True)
-    K = (S_invH @ P1).T
-    A = jnp.zeros(F.shape)
-
-    b_std = m1 + K @ (y - H @ m1 - c)
-    C = P1 - (K @ S @ K.T)
-
-    temp = (S_invH @ F).T
-    eta = temp @ (y - H @ b - c)
-    J = temp @ H @ F
-
-    return A, b_std, C, eta, J
-
-
-def _standard_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y):
-
-    F, Q, b = linearization_method(transition_model, nominal_trajectory)
-    H, R, c = linearization_method(observation_model, nominal_trajectory)
-
-    S = H @ Q @ H.T + R
-    S_invH = jlinalg.solve(S, H, sym_pos=True)
-    K = (S_invH @ Q).T
+    K = (S_invH @ P).T
     A = F - K @ H @ F
-    b_std = b + K @ (y - H @ b - c)
-    C = Q - K @ H @ Q
+
+    b_std = m + K @ (y - H @ m - c)
+    C = P - (K @ S @ K.T)
 
     temp = (S_invH @ F).T
     eta = temp @ (y - H @ b - c)
@@ -93,79 +71,49 @@ def _standard_make_associative_filtering_params_generic(linearization_method, tr
     return A, b_std, C, eta, J
 
 
-def _sqrt_make_associative_filtering_params(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y, i):
+def _sqrt_associative_params(linearization_method, transition_model, observation_model,
+                             nominal_trajectory, x0, ys):
+    T = ys.shape[0]
+    n_k_1 = jax.tree_map(lambda z: z[:-1], nominal_trajectory)
+    n_k = jax.tree_map(lambda z: z[1:], nominal_trajectory)
 
-    predicate = i == 0
+    m0, L0 = x0
+    ms = jnp.concatenate([m0[None, ...], jnp.zeros_like(m0, shape=(T - 1,) + m0.shape)])
+    Ls = jnp.concatenate([L0[None, ...], jnp.zeros_like(L0, shape=(T - 1,) + L0.shape)])
 
-    def _first(_):
-        return _sqrt_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y)
+    vmapped_fn = jax.vmap(_sqrt_associative_params_one, in_axes=[None, None, None, 0, 0, 0, 0, 0])
 
-    def _generic(_):
-        return _sqrt_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y)
-
-    return jax.lax.cond(predicate,
-                    _first,
-                    _generic,
-                    None)
+    return vmapped_fn(linearization_method, transition_model, observation_model, n_k_1, n_k, ms, Ls, ys)
 
 
-def _sqrt_make_associative_filtering_params_first(linearization_method, transition_model, observation_model, nominal_trajectory, x0, y):
-
-    F, cholQ, b = linearization_method(transition_model, nominal_trajectory)
-    H, cholR, c = linearization_method(observation_model, nominal_trajectory)
+def _sqrt_associative_params_one(linearization_method, transition_model, observation_model,
+                                 n_k_1, n_k, m0, L0, y):
+    F, cholQ, b = linearization_method(transition_model, n_k_1)
+    H, cholR, c = linearization_method(observation_model, n_k)
 
     nx = cholQ.shape[0]
     ny = cholR.shape[0]
 
-    m1 = F @ x0.mean + b
-    N1_ = tria(jnp.concatenate((F @ x0.chol, cholQ), axis=1))
-    Psi_ = jnp.block([[H @ N1_, cholR], [N1_, jnp.zeros((N1_.shape[0], cholR.shape[1]))]])
+    m1 = F @ m0 + b
+    N1_ = tria(jnp.concatenate((F @ L0, cholQ), axis=1))
+    Psi_ = jnp.block([[H @ N1_, cholR],
+                      [N1_, jnp.zeros((N1_.shape[0], cholR.shape[1]))]])
     Tria_Psi_ = tria(Psi_)
-    Psi11_ = Tria_Psi_[:ny, :ny]
-    Psi21_ = Tria_Psi_[ny: ny + nx, :ny]
-    Psi22_ = Tria_Psi_[ny: ny + nx, ny:]
-    Y1 = Psi11_
-    K1 = jlinalg.solve(Psi11_.T, Psi21_.T).T
+    Psi11 = Tria_Psi_[:ny, :ny]
+    Psi21 = Tria_Psi_[ny: ny + nx, :ny]
+    U = Tria_Psi_[ny: ny + nx, ny:]
 
-    A = jnp.zeros_like(F)
-    b_sqr = m1 + K1 @ (y - H @ m1 - c)
-    U = Psi22_
+    K = jlinalg.solve_triangular(Psi11, Psi21.T, trans=True, lower=True).T
 
-    Z1 = jlinalg.solve(Y1, H @ F).T
-    eta = jlinalg.solve(Y1.T, Z1.T).T @ (y - H @ b - c)
-    if nx > ny:
-        Z = jnp.block([Z1, jnp.zeros((nx, nx - ny))])
-    else:
-        Z = jnp.block([Z1, jnp.zeros((nx, ny - nx))])
-
-    return A, b_sqr, U, eta, Z
-
-
-def _sqrt_make_associative_filtering_params_generic(linearization_method, transition_model, observation_model, nominal_trajectory, y):
-
-    F, cholQ, b = linearization_method(transition_model, nominal_trajectory)
-    H, cholR, c = linearization_method(observation_model, nominal_trajectory)
-
-    nx = cholQ.shape[0]
-    ny = cholR.shape[0]
-    Psi = jnp.block([[H @ cholQ, cholR], [cholQ, jnp.zeros((nx, ny))]])
-    Tria_Psi = tria(Psi)
-    Psi11 = Tria_Psi[:ny, :ny]
-    Psi21 = Tria_Psi[ny:ny + nx, :ny]
-    Psi22 = Tria_Psi[ny:ny + nx, ny:]
-    Y = Psi11
-    K = jlinalg.solve(Psi11.T, Psi21.T).T
     A = F - K @ H @ F
-    b_sqr = b + K @ (y - H @ b - c)
-    U = Psi22
+    b_sqr = m1 + K @ (y - H @ m1 - c)
 
-    Z1 = jlinalg.solve(Y, H @ F).T
-    eta = jlinalg.solve(Y.T, Z1.T).T @ (y - H @ b - c)
+    Z = jlinalg.solve_triangular(Psi11, H @ F, lower=True).T
+    eta = jlinalg.solve_triangular(Psi11, Z.T, trans=True, lower=True).T @ (y - H @ b - c)
 
     if nx > ny:
-        Z = jnp.block([Z1, jnp.zeros((nx, nx - ny))])
+        Z = jnp.block([Z, jnp.zeros((nx, nx - ny))])
     else:
-        Z = jnp.block([Z1, jnp.zeros((nx, ny - nx))])
+        pass
 
     return A, b_sqr, U, eta, Z
-

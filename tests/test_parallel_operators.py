@@ -2,8 +2,8 @@ import jax
 import numpy as np
 import pytest
 
-from parsmooth.parallel._operators import _standard_filtering_operator, _sqrt_filtering_operator, \
-    _standard_smoothing_operator, _sqrt_smoothing_operator
+from parsmooth.parallel._operators import standard_filtering_operator, sqrt_filtering_operator, \
+    standard_smoothing_operator, sqrt_smoothing_operator
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -44,17 +44,17 @@ def test_standard_vs_sqrt_filtering_operator(dim_x, seed):
     J1 = Z1 @ Z1.T
     J2 = Z2 @ Z2.T
 
-    A_std, b_std, C, eta_std, J = _standard_filtering_operator((A1, b1, C1, eta1, J1),
-                                                               (A2, b2, C2, eta2, J2))
+    A_std, b_std, C, eta_std, J = standard_filtering_operator((A1, b1, C1, eta1, J1),
+                                                              (A2, b2, C2, eta2, J2))
 
-    A_sqrt, b_sqrt, U, eta_sqrt, Z = _sqrt_filtering_operator((A1, b1, U1, eta1, Z1),
-                                                              (A2, b2, U2, eta2, Z2))
+    A_sqrt, b_sqrt, U, eta_sqrt, Z = sqrt_filtering_operator((A1, b1, U1, eta1, Z1),
+                                                             (A2, b2, U2, eta2, Z2))
 
-    np.testing.assert_allclose(A_std, A_sqrt, atol=1e-3, rtol=1e-3)
-    np.testing.assert_allclose(b_std, b_sqrt, atol=1e-3, rtol=1e-3)
-    np.testing.assert_allclose(eta_std, eta_sqrt, atol=1e-3, rtol=1e-3)
-    np.testing.assert_allclose(C, U @ U.T, atol=1e-3, rtol=1e-3)
-    np.testing.assert_allclose(J, Z @ Z.T, atol=1e-3, rtol=1e-3)
+    np.testing.assert_allclose(A_std, A_sqrt, atol=1e-6, rtol=1e-6)
+    np.testing.assert_allclose(b_std, b_sqrt, atol=1e-6, rtol=1e-6)
+    np.testing.assert_allclose(eta_std, eta_sqrt, atol=1e-6, rtol=1e-6)
+    np.testing.assert_allclose(C, U @ U.T, atol=1e-6, rtol=1e-6)
+    np.testing.assert_allclose(J, Z @ Z.T, atol=1e-6, rtol=1e-6)
 
 
 @pytest.mark.parametrize("dim_x", [1, 2, 3])
@@ -77,11 +77,11 @@ def test_standard_vs_sqrt_smoothing_operator(dim_x, seed):
     L1 = D1 @ D1.T
     L2 = D2 @ D2.T
 
-    g_std, E_std, L = _standard_smoothing_operator((g1, E1, L1),
-                                                   (g2, E2, L2))
+    g_std, E_std, L = standard_smoothing_operator((g1, E1, L1),
+                                                  (g2, E2, L2))
 
-    g_sqrt, E_sqrt, D = _sqrt_smoothing_operator((g1, E1, D1),
-                                                 (g2, E2, D2))
+    g_sqrt, E_sqrt, D = sqrt_smoothing_operator((g1, E1, D1),
+                                                (g2, E2, D2))
 
     np.testing.assert_allclose(g_std, g_sqrt, atol=1e-3, rtol=1e-3)
     np.testing.assert_allclose(E_std, E_sqrt, atol=1e-3, rtol=1e-3)
