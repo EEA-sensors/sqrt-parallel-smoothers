@@ -15,8 +15,15 @@ def filtering(observations: jnp.ndarray,
               observation_model: FunctionalModel,
               linearization_method: Callable,
               nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
+    T = observations.shape[0]
     if nominal_trajectory is not None:
         are_inputs_compatible(x0, nominal_trajectory)
+
+    else:
+        m0, chol_or_cov_0 = x0
+        nominal_mean = jnp.zeros_like(m0, shape=(T + 1,) + m0.shape)
+        nominal_cov_or_chol = jnp.zeros_like(chol_or_cov_0, shape=(T + 1,) + chol_or_cov_0.shape)
+        nominal_trajectory = type(x0)(nominal_mean, nominal_cov_or_chol)  # this is kind of a hack but I've seen worse.
 
     if isinstance(x0, MVNSqrt):
         associative_params = _sqrt_associative_params(linearization_method, transition_model, observation_model,
