@@ -1,6 +1,11 @@
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
+from jax import custom_vjp, vjp
+from jax.custom_derivatives import closure_convert
+from jax.lax import while_loop
 
 
 def cholesky_update_many(chol_init, update_vectors, multiplier):
@@ -91,3 +96,52 @@ def none_or_concat(x, y, position=1):
         return jax.tree_map(lambda a, b: jnp.concatenate([a[None, ...], b]), y, x)
     else:
         return jax.tree_map(lambda a, b: jnp.concatenate([b, a[None, ...]]), y, x)
+
+
+# FIXED POINT UTIL
+
+def fixed_point(f, x0, criterion):
+    converted_fn, aux_args = closure_convert(f, x0)
+    return _fixed_point(converted_fn, aux_args, x0, criterion)
+
+
+@partial(custom_vjp, nondiff_argnums=(0, 3))
+def _fixed_point(f, params, x0, criterion):
+    return __fixed_point(f, params, x0, criterion)[0]
+
+
+def _fixed_point_fwd(f, params, x0, criterion):
+    x_star, n_iter = __fixed_point(f, params, x0, criterion)
+    return x_star, (params, x_star, n_iter)
+
+
+def _fixed_point_rev(f, _criterion, res, x_star_bar):
+    params, x_star, n_iter = res
+    _, vjp_theta = vjp(lambda p: f(x_star, *p), params)
+    theta_bar, = vjp_theta(__fixed_point(partial(_rev_iter, f),
+                                         (params, x_star, x_star_bar),
+                                         x_star_bar,
+                                         lambda i, *_: i < n_iter + 1)[0])
+    return theta_bar, jax.tree_map(jnp.zeros_like, x_star)
+
+
+def _rev_iter(f, u, *packed):
+    params, x_star, x_star_bar = packed
+    _, vjp_x = vjp(lambda x: f(x, *params), x_star)
+    return x_star_bar + vjp_x(u)[0]
+
+
+def __fixed_point(f, params, x0, criterion):
+    def cond_fun(carry):
+        i, x_prev, x = carry
+        return criterion(i, x_prev, x)
+
+    def body_fun(carry):
+        i, _, x = carry
+        return i + 1, x, f(x, *params)
+
+    n_iter, _, x_star = while_loop(cond_fun, body_fun, (1, x0, f(x0, *params)))
+    return x_star, n_iter
+
+
+_fixed_point.defvjp(_fixed_point_fwd, _fixed_point_rev)
