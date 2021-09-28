@@ -6,10 +6,10 @@ import pytest
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt
 from parsmooth.linearization import cubature, extended
-from parsmooth.parallel._smoother import _standard_associative_params, _sqrt_associative_params, \
+from parsmooth.parallel._smoothing import _standard_associative_params, _sqrt_associative_params, \
     smoothing as par_smoothing
-from parsmooth.sequential._filter import filtering as seq_filtering
-from parsmooth.sequential._smoother import smoothing as seq_smoothing
+from parsmooth.sequential._filtering import filtering as seq_filtering
+from parsmooth.sequential._smoothing import smoothing as seq_smoothing
 from tests._lgssm import transition_function as lgssm_f, observation_function as lgssm_h, get_data
 from tests._test_utils import get_system
 

@@ -7,7 +7,7 @@ from jax.scipy.linalg import solve
 
 from parsmooth._base import FunctionalModel, MVNStandard, MVNSqrt
 from parsmooth.linearization import cubature, extended
-from parsmooth.sequential._filter import _sqrt_predict, _standard_predict, _sqrt_update, _standard_update, filtering
+from parsmooth.sequential._filtering import _sqrt_predict, _standard_predict, _sqrt_update, _standard_update, filtering
 from tests._lgssm import get_data, transition_function as lgssm_f, observation_function as lgssm_h
 from tests._test_utils import get_system
 
