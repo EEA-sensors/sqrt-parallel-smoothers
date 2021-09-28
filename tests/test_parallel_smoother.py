@@ -91,9 +91,9 @@ def test_vs_sequential_smoother(dim_x, dim_y, seed, linearization_method):
     seq_sqrt_smoother_res = seq_smoothing(sqrt_transition_model, seq_sqrt_filter_res, linearization_method)
     par_sqrt_smoother_res = par_smoothing(sqrt_transition_model, seq_sqrt_filter_res, linearization_method)
 
-    np.testing.assert_array_almost_equal(seq_smoother_res.mean, par_smoother_res.mean)
-    np.testing.assert_array_almost_equal(seq_smoother_res.cov, par_smoother_res.cov)
-    np.testing.assert_array_almost_equal(seq_sqrt_smoother_res.mean, par_sqrt_smoother_res.mean)
+    np.testing.assert_array_almost_equal(seq_smoother_res.mean, par_smoother_res.mean, decimal=4)
+    np.testing.assert_array_almost_equal(seq_smoother_res.cov, par_smoother_res.cov, decimal=4)
+    np.testing.assert_array_almost_equal(seq_sqrt_smoother_res.mean, par_sqrt_smoother_res.mean, decimal=4)
     np.testing.assert_array_almost_equal(
         seq_sqrt_smoother_res.chol @ np.transpose(seq_sqrt_smoother_res.chol, [0, 2, 1]),
-        seq_smoother_res.cov)
+        seq_smoother_res.cov, decimal=4)
