@@ -60,7 +60,7 @@ def test_tria(seed):
 
 def test_fixed_point():
     def my_fun(a, b, x0):
-        f = lambda x: a * x + b[0]
+        f = lambda x: (a * x + b[0],)
         return fixed_point(f, x0[0], lambda i, *_: i < 500)
 
     actual = my_fun(0.7, (0.5,), (1.,))

@@ -5,6 +5,7 @@ import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
 from jax import custom_vjp, vjp
 from jax.custom_derivatives import closure_convert
+from jax.flatten_util import ravel_pytree
 from jax.lax import while_loop
 
 
@@ -128,7 +129,9 @@ def _fixed_point_rev(f, _criterion, res, x_star_bar):
 def _rev_iter(f, u, *packed):
     params, x_star, x_star_bar = packed
     _, vjp_x = vjp(lambda x: f(x, *params), x_star)
-    return x_star_bar + vjp_x(u)[0]
+    ravelled_x_star_bar, unravel_fn = ravel_pytree(x_star_bar)
+    ravelled_vjp_x_u, _ = ravel_pytree(vjp_x(u)[0])
+    return unravel_fn(ravelled_x_star_bar + ravelled_vjp_x_u)
 
 
 def __fixed_point(f, params, x0, criterion):
