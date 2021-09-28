@@ -104,7 +104,7 @@ def test_all_associative_params(dim_x, dim_y, seed, linearization_method):
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 def test_vs_sequential_filter(dim_x, dim_y, seed, linearization_method):
     np.random.seed(seed)
-    T = 20
+    T = 15
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
 
