@@ -117,11 +117,9 @@ def _sqrt_gain_and_inc(F, cholQ, b, xf, eps):
     tria_Phi = tria(Phi)
     Phi11 = tria_Phi[:nx, :nx]
     Phi21 = tria_Phi[nx:, :nx]
-    Phi22 = tria_Phi[nx:, nx:]
-    Phi12 = tria_Phi[:nx, nx:]
+    inc_L = tria_Phi[nx:, nx:]
 
     gain = jlag.solve_triangular(Phi11, Phi21.T, trans=True, lower=True).T
-    inc_L = tria(jnp.concatenate([Phi22, gain @ Phi12.T], axis=1))
     inc_m = mf - gain @ (F @ mf + b)
 
     inc = _make_mvn(MVNSqrt(inc_m, inc_L), eps)
