@@ -4,53 +4,7 @@ import jax.scipy.linalg as jlinalg
 from parsmooth._utils import tria
 
 
-def filtering_operator(elem1, elem2, sqrt=False):
-    """
-    Associative filtering operator
-
-    Parameters
-    ----------
-    elem1: tuple of array
-        parameterized elements for the operator
-    elem2: tuple of array
-        parameterized elements for the operator
-    sqrt: bool
-        Using the square root operator
-
-    Returns
-    -------
-    elem12: tuple of array
-        The resulting combination
-    """
-    if not sqrt:
-        return _standard_filtering_operator(elem1, elem2)
-    return _sqrt_filtering_operator(elem1, elem2)
-
-
-def smoothing_operator(elem1, elem2, sqrt=False):
-    """
-    Associative operator described in TODO: put the reference
-
-    Parameters
-    ----------
-    elem1: tuple of array
-        g_i, E_i, L_i
-    elem2: tuple of array
-        g_j, E_j, L_j
-    sqrt: bool
-        Using the square root operator
-
-    Returns
-    -------
-    elem12: tuple of array
-        The resulting combination
-    """
-    if not sqrt:
-        return _standard_smoothing_operator(elem1, elem2)
-    return _sqrt_smoothing_operator(elem1, elem2)
-
-
-def _standard_filtering_operator(elem1, elem2):
+def standard_filtering_operator(elem1, elem2):
     """
     Associative operator described in TODO: put the reference
 
@@ -86,7 +40,7 @@ def _standard_filtering_operator(elem1, elem2):
     return A, b, C, eta, J
 
 
-def _sqrt_filtering_operator(elem1, elem2):
+def sqrt_filtering_operator(elem1, elem2):
     """
     Associative operator described in TODO: put the reference
 
@@ -113,19 +67,17 @@ def _sqrt_filtering_operator(elem1, elem2):
     Xi21 = tria_xi[nx: nx + nx, :nx]
     Xi22 = tria_xi[nx: nx + nx, nx:]
 
-    A = A2 @ A1 - jlinalg.solve(Xi11, U1.T @ A2.T).T @ Xi21.T @ A1
-    b = A2 @ (jnp.eye(nx) - jlinalg.solve(Xi11, U1.T).T @ Xi21.T) @ (b1 + U1 @ U1.T @ eta2) + b2
-    U = tria(jnp.concatenate([jlinalg.solve(Xi11, U1.T @ A2.T).T,
-                              U2],
-                             axis=1))
-    eta = A1.T @ (jnp.eye(nx) - jlinalg.solve(Xi11.T, Xi21.T).T @ U1.T) @ (eta2 - Z2 @ Z2.T @ b1) + eta1
-    Z = tria(jnp.concatenate([A1.T @ Xi22,
-                              Z1],
-                             axis=1))
+    A = A2 @ A1 - jlinalg.solve_triangular(Xi11, U1.T @ A2.T, lower=True).T @ Xi21.T @ A1
+    b = A2 @ (jnp.eye(nx) - jlinalg.solve_triangular(Xi11, U1.T, lower=True).T @ Xi21.T) @ (b1 + U1 @ U1.T @ eta2) + b2
+    U = tria(jnp.concatenate([jlinalg.solve_triangular(Xi11, U1.T @ A2.T, lower=True).T, U2], axis=1))
+    eta = A1.T @ (jnp.eye(nx) - jlinalg.solve_triangular(Xi11, Xi21.T, lower=True, trans=True).T @ U1.T) @ (
+            eta2 - Z2 @ Z2.T @ b1) + eta1
+    Z = tria(jnp.concatenate([A1.T @ Xi22, Z1], axis=1))
+
     return A, b, U, eta, Z
 
 
-def _standard_smoothing_operator(elem1, elem2):
+def standard_smoothing_operator(elem1, elem2):
     """
     Associative operator described in TODO: put the reference
 
@@ -149,31 +101,7 @@ def _standard_smoothing_operator(elem1, elem2):
     return g, E, L
 
 
-def _sqrt_smoothing_operator(elem1, elem2):
-    """
-    Associative operator described in TODO: put the reference
-
-    Parameters
-    ----------
-    elem1: tuple of array
-        g_i, E_i, L_i
-    elem2: tuple of array
-        g_j, E_j, L_j
-
-    Returns
-    -------
-
-    """
-    g1, E1, L1 = elem1
-    g2, E2, L2 = elem2
-
-    g = E2 @ g1 + g2
-    E = E2 @ E1
-    L = E2 @ L1 @ E2.T + L2
-    return g, E, L
-
-
-def _sqrt_smoothing_operator(elem1, elem2):
+def sqrt_smoothing_operator(elem1, elem2):
     """
 
     Parameters
@@ -192,8 +120,6 @@ def _sqrt_smoothing_operator(elem1, elem2):
 
     g = E2 @ g1 + g2
     E = E2 @ E1
-    D = tria(jnp.concatenate([E2 @ D1,
-                              D2],
-                             axis=1))
+    D = tria(jnp.concatenate([E2 @ D1, D2], axis=1))
 
     return g, E, D
