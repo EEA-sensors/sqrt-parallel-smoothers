@@ -23,14 +23,14 @@ def config():
     jax.config.update("jax_debug_nans", False)
 
 
-@pytest.mark.parametrize("dim_x", [1, 2, 3])
-@pytest.mark.parametrize("dim_y", [1, 2, 3])
-@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("dim_x", [1, 2])
+@pytest.mark.parametrize("dim_y", [1, 2])
+@pytest.mark.parametrize("seed", [0])
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("parallel", [True, False])
 def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
     np.random.seed(seed)
-    T = 15
+    T = 5
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
 
@@ -59,7 +59,7 @@ def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
 
     sqrt_iterated_res = iterated_smoothing(observations, chol_x0, sqrt_transition_model, sqrt_observation_model,
                                            linearization_method, x_nominal_sqrt, parallel,
-                                           criterion=lambda i, *_: i < 10)
+                                           criterion=lambda i, *_: i < 5)
 
     np.testing.assert_array_almost_equal(iterated_res.mean, seq_smoother_res.mean, decimal=4)
     np.testing.assert_array_almost_equal(iterated_res.cov, seq_smoother_res.cov, decimal=4)
@@ -69,14 +69,14 @@ def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
         seq_smoother_res.cov, decimal=4)
 
 
-@pytest.mark.parametrize("dim_x", [1, 2, 3])
-@pytest.mark.parametrize("dim_y", [1, 2, 3])
-@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("dim_x", [1, 2])
+@pytest.mark.parametrize("dim_y", [1, 2])
+@pytest.mark.parametrize("seed", [42])
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("parallel", [True, False])
 def test_linear_gradient(dim_x, dim_y, seed, linearization_method, parallel):
     np.random.seed(seed)
-    T = 15
+    T = 5
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
 
@@ -99,7 +99,7 @@ def test_linear_gradient(dim_x, dim_y, seed, linearization_method, parallel):
             observation_model = FunctionalModel(partial(lgssm_h, H=B), MVNStandard(c, R))
 
         iterated_res = iterated_smoothing(observations, x0, transition_model, observation_model,
-                                          linearization_method, nominal, parallel, criterion=lambda i, *_: i < 10)
+                                          linearization_method, nominal, parallel, criterion=lambda i, *_: i < 5)
         return iterated_res
 
     check_grads(my_fun, (F, H, chol_x0, x_nominal_sqrt), 1, ["rev"], atol=1e-3, rtol=1e-3)
