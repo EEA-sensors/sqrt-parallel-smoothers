@@ -1,8 +1,9 @@
 from typing import Callable, Optional
 
-import jax.numpy as jnp
+from jax import numpy as jnp
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt
+from parsmooth._pathwise_sampler import _par_sampling, _seq_sampling
 from parsmooth._utils import fixed_point
 from parsmooth.parallel._filtering import filtering as par_filtering
 from parsmooth.parallel._smoothing import smoothing as par_smoothing
@@ -65,3 +66,18 @@ def iterated_smoothing(observations: jnp.ndarray,
                                 curr_nominal_traj, parallel)
 
     return fixed_point(fun_to_iter, init_nominal_trajectory, criterion)
+
+
+def sampling(key: jnp.ndarray,
+             n_samples: int,
+             transition_model: FunctionalModel,
+             filter_trajectory: MVNSqrt or MVNStandard,
+             linearization_method: Callable,
+             nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
+             parallel: bool = True):
+    nominal_trajectory = nominal_trajectory or smoothing(transition_model, filter_trajectory, linearization_method,
+                                                         None, parallel)
+    if parallel:
+        return _par_sampling(key, n_samples, transition_model, filter_trajectory, linearization_method,
+                             nominal_trajectory)
+    return _seq_sampling(key, n_samples, transition_model, filter_trajectory, linearization_method, nominal_trajectory)
