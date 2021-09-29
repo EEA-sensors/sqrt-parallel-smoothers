@@ -22,7 +22,7 @@ def filtering(observations: jnp.ndarray,
     else:
         m0, chol_or_cov_0 = x0
         nominal_mean = jnp.zeros_like(m0, shape=(T + 1,) + m0.shape)
-        nominal_cov_or_chol = jnp.repeat(jnp.eye(m0.shape[-1])[None, ...], T + 1, 0)
+        nominal_cov_or_chol = jnp.zeros_like(chol_or_cov_0, shape=(T + 1,) + chol_or_cov_0.shape)
         nominal_trajectory = type(x0)(nominal_mean, nominal_cov_or_chol)  # this is kind of a hack but I've seen worse.
 
     if isinstance(x0, MVNSqrt):
@@ -121,6 +121,6 @@ def _sqrt_associative_params_one(linearization_method, transition_model, observa
     if nx > ny:
         Z = jnp.concatenate([Z, jnp.zeros((nx, nx - ny))], axis=1)
     else:
-        pass
+        Z = tria(Z)
 
     return A, b_sqr, U, eta, Z
