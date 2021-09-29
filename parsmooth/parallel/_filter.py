@@ -121,6 +121,6 @@ def _sqrt_associative_params_one(linearization_method, transition_model, observa
     if nx > ny:
         Z = jnp.concatenate([Z, jnp.zeros((nx, nx - ny))], axis=1)
     else:
-        pass
+        Z = tria(Z)
 
     return A, b_sqr, U, eta, Z
