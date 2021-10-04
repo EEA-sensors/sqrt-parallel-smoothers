@@ -1,8 +1,9 @@
 from typing import Any, Tuple
 
 import jax
+import jax.numpy as jnp
 
-from parsmooth._base import FunctionalModel, MVNSqrt, are_inputs_compatible
+from parsmooth._base import FunctionalModel, ConditionalMomentsModel, MVNSqrt, are_inputs_compatible
 
 
 def linearize(f, x):
@@ -33,7 +34,35 @@ def linearize(f, x):
             return _sqrt_linearize_callable(f, m_x, *q)
         return _standard_linearize_callable(f, m_x, *q)
 
-    raise NotImplementedError("Not implemented yet")
+    if isinstance(f, ConditionalMomentsModel):
+        if isinstance(x, MVNSqrt):
+            return _sqrt_conditional_linearize(f, x)
+        return _standard_conditional_linearize(f, x)
+
+
+def _conditional_linearize_common(f, x) -> Tuple[Any, Any, Any]:
+    f, E_f, V_f = f
+    E_x, V_x = x
+    dE_f = jax.jacfwd(E_f)(x)
+    return E_f(E_x), V_f(E_x) + dE_f(E_x) @ V_x @ dE_f(E_x).T, dE_f(E_x) @ V_x
+
+
+def _standard_conditional_linearize(f, x):
+    E_y, V_y, Cov_y_x = _conditional_linearize_common(f, x)
+    E_x, V_x = x
+    C = jnp.linalg.solve(Cov_y_x.T, V_x.T).T
+    d = E_y - C @ E_x
+    COV = V_y - C @ V_x @ C.T
+    return C, d, COV
+
+
+def _sqrt_conditional_linearize(f, x):
+    f, E_f, Chol_f = f
+    E_x, chol_x = x
+    C = jax.jacfwd(E_f)(x)(E_x)
+    d = E_f(E_x) - C @ E_x
+    Chol = Chol_f(E_x)
+    return C, d, Chol
 
 
 def _linearize_callable_common(f, x, q) -> Tuple[Any, Any, Any]:

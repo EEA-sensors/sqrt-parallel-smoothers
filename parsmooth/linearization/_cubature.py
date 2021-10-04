@@ -30,7 +30,10 @@ def linearize(f, x):
     if isinstance(f, FunctionalModel):
         f, q = f
         return linearize_callable(f, x, q, _get_sigma_points)
-    raise NotImplementedError("Not implemented yet")
+    if isinstance(f, ConditionalMomentsModel):
+        if isinstance(x, MVNSqrt):
+            return
+        return
 
 
 def _get_sigma_points(mvn: MVNSqrt) -> Tuple[SigmaPoints, jnp.ndarray]:

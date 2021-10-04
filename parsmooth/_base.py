@@ -20,6 +20,7 @@ class FunctionalModel(NamedTuple):
 
 
 class ConditionalMomentsModel(NamedTuple):
+    function: Callable
     conditional_mean: Callable
     conditional_variance: Callable
 
