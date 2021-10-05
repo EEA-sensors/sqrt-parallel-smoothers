@@ -23,7 +23,7 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
 
 
 def conditional_linearize_callable(f, x, get_sigma_points):
-    F_x, x_pts, f_pts, m_f, v_f = conditional_linearize_callable_common(f, x, get_sigma_points)
+    F_x, x_pts, f_pts, m_f, v_f = linearize_conditional_common(f, x, get_sigma_points)
 
     if isinstance(x, MVNSqrt):
         _, cholV_f = f
@@ -31,7 +31,6 @@ def conditional_linearize_callable(f, x, get_sigma_points):
         sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
         sqrt_Phi = tria(sqrt_Phi.T)
         chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
-        L = tria(jnp.concatenate([chol_L, jnp.dot(jnp.sqrt(x_pts.wc),cholV_f(x_pts.points))[:,None]]).T)
         return F_x, chol_L, m_f - F_x @ m_x
 
     m_x, cov_x = x
@@ -40,7 +39,7 @@ def conditional_linearize_callable(f, x, get_sigma_points):
     return F_x, L, m_f - F_x @ m_x
 
 
-def conditional_linearize_callable_common(f, x, get_sigma_points):
+def linearize_conditional_common(f, x, get_sigma_points):
     E_f, cov_or_chol_V_f = f
     x = get_mvnsqrt(x)
     m_x, chol_x = x
@@ -58,10 +57,10 @@ def conditional_linearize_callable_common(f, x, get_sigma_points):
     return F_x, x_pts, f_pts, m_f, v_f
 
 
-def linearize_callable(f, x, q, get_sigma_points):
+def linearize_functional(f, x, q, get_sigma_points):
     are_inputs_compatible(x, q)
 
-    F_x, F_q, xq_pts, f_pts, m_f = _linearize_callable_common(f, x, q, get_sigma_points)
+    F_x, F_q, xq_pts, f_pts, m_f = _linearize_functional_common(f, x, q, get_sigma_points)
     m_q, _ = q
     if isinstance(x, MVNSqrt):
         m_x, chol_x = x
@@ -76,7 +75,7 @@ def linearize_callable(f, x, q, get_sigma_points):
     return F_x, L, m_f - F_x @ m_x
 
 
-def _linearize_callable_common(f, x, q, get_sigma_points):
+def _linearize_functional_common(f, x, q, get_sigma_points):
     x = get_mvnsqrt(x)
     q = get_mvnsqrt(q)
     m_x, chol_x = x

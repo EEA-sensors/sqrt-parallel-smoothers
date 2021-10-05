@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from parsmooth._base import MVNStandard, FunctionalModel, ConditionalMomentsModel, MVNSqrt
-from parsmooth.linearization._sigma_points import SigmaPoints, linearize_callable, conditional_linearize_callable
+from parsmooth.linearization._sigma_points import SigmaPoints, linearize_functional, conditional_linearize_callable
 
 
 def linearize(f, x):
@@ -29,7 +29,7 @@ def linearize(f, x):
     """
     if isinstance(f, FunctionalModel):
         f, q = f
-        return linearize_callable(f, x, q, _get_sigma_points)
+        return linearize_functional(f, x, q, _get_sigma_points)
     if isinstance(f, ConditionalMomentsModel):
         return conditional_linearize_callable(f, x, _get_sigma_points)
 

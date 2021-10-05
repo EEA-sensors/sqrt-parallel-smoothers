@@ -44,7 +44,11 @@ def _conditional_linearize_common(f, x) -> Tuple[Any, Any, Any]:
     E_f, V_f = f
     E_x, V_x = x
     dE_f = jax.jacfwd(E_f, 0)
-    return E_f(E_x), V_f(E_x) + dE_f(E_x) @ V_x @ dE_f(E_x).T, dE_f(E_x) @ V_x
+    if V_f(E_x)[..., None].shape[0] == V_f(E_x)[..., None].shape[1]:
+        V = V_f(E_x)
+    else:
+        V = jnp.diag(V_f(E_x))
+    return E_f(E_x), V + dE_f(E_x) @ V_x @ dE_f(E_x).T, dE_f(E_x) @ V_x
 
 
 def _standard_conditional_linearize(f, x):
@@ -61,8 +65,11 @@ def _sqrt_conditional_linearize(f, x):
     E_x, chol_x = x
     C = jax.jacfwd(E_f, 0)(E_x)
     d = E_f(E_x) - C @ E_x
-    Chol = Chol_f(E_x)
-    return C, Chol, d
+    if Chol_f(E_x)[..., None].shape[0] == Chol_f(E_x)[..., None].shape[1]:
+        Chol = Chol_f(E_x)
+    else:
+        Chol = jnp.diag(Chol_f(E_x))
+    return C, jnp.diag(Chol_f(E_x)), d
 
 
 def _linearize_callable_common(f, x, q) -> Tuple[Any, Any, Any]:

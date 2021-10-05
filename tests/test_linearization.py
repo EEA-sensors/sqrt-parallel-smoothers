@@ -73,7 +73,7 @@ def test_linear(dim_x, dim_q, seed, method, sqrt):
     np.testing.assert_allclose(expected, actual, atol=1e-7)
     np.testing.assert_allclose(expected_Q, Q_lin, atol=1e-7)
 
-@pytest.mark.parametrize("dim_x", [1])
+@pytest.mark.parametrize("dim_x", [1,3])
 @pytest.mark.parametrize("seed", [0, 42])
 @pytest.mark.parametrize("method", [cubature, extended])
 def test_nonlinear_standard_vs_sqrt(dim_x, seed, method):
@@ -98,4 +98,5 @@ def test_nonlinear_standard_vs_sqrt(dim_x, seed, method):
     np.testing.assert_allclose(F_x_sqr, F_x, atol=1e-7)
     np.testing.assert_allclose(remainder_sqr, remainder, atol=1e-7)
     np.testing.assert_allclose(chol @ chol.T, Q, atol=1e-7)
+
 
