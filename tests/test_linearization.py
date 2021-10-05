@@ -3,8 +3,9 @@ from functools import partial
 import jax
 import numpy as np
 import pytest
+import jax.numpy as jnp
 
-from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt
+from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, ConditionalMomentsModel
 from parsmooth.linearization import extended, cubature
 
 
@@ -16,6 +17,17 @@ def config():
 def linear_function(x, q, a, b, c):
     return a @ x + b @ q + c
 
+
+def conditionalmean(x):
+    return (10*jnp.exp(x)).astype(jnp.float64)
+
+
+def conditionalcov(x):
+    return (10*jnp.exp(x)).astype(jnp.float64)
+
+
+def conditionalchol(x):
+    return (jnp.sqrt(10)*jnp.sqrt(jnp.exp(x))).astype(jnp.float64)
 
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_q", [1, 2, 3])
@@ -60,4 +72,30 @@ def test_linear(dim_x, dim_q, seed, method, sqrt):
     np.testing.assert_allclose(a, F_x, atol=1e-7)
     np.testing.assert_allclose(expected, actual, atol=1e-7)
     np.testing.assert_allclose(expected_Q, Q_lin, atol=1e-7)
+
+@pytest.mark.parametrize("dim_x", [1])
+@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("method", [cubature, extended])
+def test_nonlinear_standard_vs_sqrt(dim_x, seed, method):
+    np.random.seed(seed)
+    m_x = np.random.randn(dim_x)
+
+    chol_x = np.random.rand(dim_x, dim_x)
+    chol_x[np.triu_indices(dim_x, 1)] = 0
+
+
+    x_sqrt = MVNSqrt(m_x, chol_x)
+    x_std = MVNStandard(m_x, chol_x @ chol_x.T)
+    E_f = partial(conditionalmean)
+    V_f = partial(conditionalcov)
+    chol_f = partial(conditionalchol)
+    fun_model_std = ConditionalMomentsModel(E_f, V_f)
+    fun_model_sqr = ConditionalMomentsModel(E_f, chol_f)
+
+    F_x, Q, remainder = method(fun_model_std, x_std)
+    F_x_sqr, chol, remainder_sqr = method(fun_model_sqr, x_sqrt)
+
+    np.testing.assert_allclose(F_x_sqr, F_x, atol=1e-7)
+    np.testing.assert_allclose(remainder_sqr, remainder, atol=1e-7)
+    np.testing.assert_allclose(chol @ chol.T, Q, atol=1e-7)
 
