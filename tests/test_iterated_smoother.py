@@ -69,8 +69,8 @@ def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
         seq_smoother_res.cov, decimal=4)
 
 
-@pytest.mark.parametrize("dim_x", [1, 2])
-@pytest.mark.parametrize("dim_y", [1, 2])
+@pytest.mark.parametrize("dim_x", [1])
+@pytest.mark.parametrize("dim_y", [1])
 @pytest.mark.parametrize("seed", [42])
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("parallel", [True, False])
@@ -90,6 +90,7 @@ def test_linear_gradient(dim_x, dim_y, seed, linearization_method, parallel):
 
     true_states, observations = get_data(x0.mean, F, H, R, Q, b, c, T)
 
+    @jax.jit
     def my_fun(A, B, x0, nominal):
         if isinstance(x0, MVNSqrt):
             transition_model = FunctionalModel(partial(lgssm_f, A=A), MVNSqrt(b, cholQ))

@@ -60,12 +60,12 @@ def test_tria(seed):
 
 def test_fixed_point():
     def my_fun(a, b, x0):
-        f = lambda x: (a * x + b[0],)
-        return fixed_point(f, x0[0], lambda i, *_: i < 500)
+        f = lambda x: (a * x[0] + b[0],)
+        return fixed_point(f, x0, lambda i, *_: i < 500)
 
     actual = my_fun(0.7, (0.5,), (1.,))
     expected = 0.5 / 0.3
 
-    assert actual == pytest.approx(expected, 1e-7, 1e-7)
+    assert actual[0] == pytest.approx(expected, 1e-7, 1e-7)
 
     check_grads(my_fun, (0.7, (0.5,), (1.,)), 1, modes=["rev"])
