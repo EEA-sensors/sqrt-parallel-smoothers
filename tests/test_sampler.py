@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import pytest
+from scipy.stats import kstest
 
 from parsmooth._base import FunctionalModel, MVNStandard, MVNSqrt
 from parsmooth.linearization import cubature, extended
@@ -34,7 +35,7 @@ def test_samples_marginals(dim_x, dim_y, seed, linearization, jax_seed, parallel
     key = jax.random.PRNGKey(jax_seed)
 
     T = 10
-    N = 10_000
+    N = 100_000
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
     _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
@@ -55,10 +56,12 @@ def test_samples_marginals(dim_x, dim_y, seed, linearization, jax_seed, parallel
         sqrt_samples = sampling(key, N, sqrt_transition_model, sqrt_filtered_states, method, sqrt_smoothed_states,
                                 parallel=parallel)
 
+        print(kstest(samples[0][:, 0], "norm", (smoothed_states.mean[0, 0], smoothed_states.cov[0, 0, 0])))
+
         np.testing.assert_allclose(samples.mean(1), smoothed_states.mean, rtol=1e-2, atol=1e-2)
         np.testing.assert_allclose(samples.var(1), np.diagonal(smoothed_states.cov, axis1=1, axis2=2),
-                                   rtol=1e-1, atol=5e-2)
+                                   rtol=1e-2, atol=1e-2)
         np.testing.assert_allclose(sqrt_samples.mean(1), sqrt_smoothed_states.mean,
                                    rtol=1e-2, atol=1e-2)
         np.testing.assert_allclose(sqrt_samples.var(1), np.diagonal(smoothed_states.cov, axis1=1, axis2=2),
-                                   rtol=1e-1, atol=5e-2)
+                                   rtol=1e-2, atol=1e-2)

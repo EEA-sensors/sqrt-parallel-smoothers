@@ -13,7 +13,7 @@ def get_system(dim_x, dim_y):
     cholR[np.triu_indices(dim_y, 1)] = 0.
     R = cholR @ cholR.T
 
-    H = np.random.randn(dim_y, dim_x)
+    H = np.eye(dim_y, dim_x)
     c = np.random.randn(dim_y)
     y = np.random.randn(dim_y)
 
