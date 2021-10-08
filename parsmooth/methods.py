@@ -33,13 +33,13 @@ def smoothing(transition_model: FunctionalModel, filter_trajectory: MVNSqrt or M
     return seq_smoothing(transition_model, filter_trajectory, linearization_method, nominal_trajectory)
 
 
-def _filter_smoother(observations: jnp.ndarray,
-                     x0: MVNStandard or MVNSqrt,
-                     transition_model: FunctionalModel,
-                     observation_model: FunctionalModel,
-                     linearization_method: Callable,
-                     nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
-                     parallel: bool = True):
+def filter_smoother(observations: jnp.ndarray,
+                    x0: MVNStandard or MVNSqrt,
+                    transition_model: FunctionalModel,
+                    observation_model: FunctionalModel,
+                    linearization_method: Callable,
+                    nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
+                    parallel: bool = True):
     filter_trajectory = filtering(observations, x0, transition_model, observation_model, linearization_method,
                                   nominal_trajectory, parallel)
     return smoothing(transition_model, filter_trajectory, linearization_method, nominal_trajectory, parallel)
@@ -58,12 +58,12 @@ def iterated_smoothing(observations: jnp.ndarray,
                        parallel: bool = True,
                        criterion: Callable = _default_criterion):
     if init_nominal_trajectory is None:
-        init_nominal_trajectory = _filter_smoother(observations, x0, transition_model, observation_model,
-                                                   linearization_method, None, parallel)
+        init_nominal_trajectory = filter_smoother(observations, x0, transition_model, observation_model,
+                                                  linearization_method, None, parallel)
 
     def fun_to_iter(curr_nominal_traj):
-        return _filter_smoother(observations, x0, transition_model, observation_model, linearization_method,
-                                curr_nominal_traj, parallel)
+        return filter_smoother(observations, x0, transition_model, observation_model, linearization_method,
+                               curr_nominal_traj, parallel)
 
     return fixed_point(fun_to_iter, init_nominal_trajectory, criterion)
 

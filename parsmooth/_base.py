@@ -1,17 +1,15 @@
 import itertools
-from typing import NamedTuple, Callable
-
-import numpy as np
+from typing import NamedTuple, Callable, Any
 
 
 class MVNStandard(NamedTuple):
-    mean: np.ndarray
-    cov: np.ndarray
+    mean: Any
+    cov: Any
 
 
 class MVNSqrt(NamedTuple):
-    mean: np.ndarray
-    chol: np.ndarray
+    mean: Any
+    chol: Any
 
 
 class FunctionalModel(NamedTuple):
