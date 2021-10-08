@@ -6,14 +6,14 @@ import jax.numpy as jnp
 from parsmooth._base import FunctionalModel, ConditionalMomentsModel, MVNSqrt, are_inputs_compatible
 
 
-def linearize(f, x):
+def linearize(model, x):
     """
     Extended linearization for a non-linear function f(x, q). If the function is linear, JAX Jacobian calculation will
     simply return the matrices without additional complexity.
 
     Parameters
     ----------
-    f: FunctionalModel or ConditionalMomentsModel
+    model: FunctionalModel or ConditionalMomentsModel
         The function to be called on x and q
     x: MVNStandard or MVNSqrt
         x-coordinate state at which to linearize f
@@ -25,8 +25,8 @@ def linearize(f, x):
     chol_q or cov_q: jnp.ndarray
         Either the cholesky or the full-rank modified covariance matrix.
     """
-    if isinstance(f, FunctionalModel):
-        f, q = f
+    if isinstance(model, FunctionalModel):
+        f, q = model
         are_inputs_compatible(x, q)
 
         m_x, _ = x
@@ -34,42 +34,33 @@ def linearize(f, x):
             return _sqrt_linearize_callable(f, m_x, *q)
         return _standard_linearize_callable(f, m_x, *q)
 
-    if isinstance(f, ConditionalMomentsModel):
+    if isinstance(model, ConditionalMomentsModel):
         if isinstance(x, MVNSqrt):
-            return _sqrt_conditional_linearize(f, x)
-        return _standard_conditional_linearize(f, x)
+            return _sqrt_linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x)
+        return _standard_linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x)
 
 
-def _conditional_linearize_common(f, x) -> Tuple[Any, Any, Any]:
-    E_f, V_f = f
-    E_x, V_x = x
-    dE_f = jax.jacfwd(E_f, 0)
-    if V_f(E_x)[..., None].shape[0] == V_f(E_x)[..., None].shape[1]:
-        V = V_f(E_x)
-    else:
-        V = jnp.diag(V_f(E_x))
-    return E_f(E_x), V + dE_f(E_x) @ V_x @ dE_f(E_x).T, dE_f(E_x) @ V_x
+def _linearize_conditional_common(c_m, c_cov, x) -> Tuple[Any, Any, Any]:
+    m, p = x
+    d_cm = jax.jacfwd(c_m, 0)
+    return c_m(m), c_cov(m) + d_cm(m) @ p @ d_cm(m).T, d_cm(m) @ p
 
 
-def _standard_conditional_linearize(f, x):
-    E_y, V_y, Cov_y_x = _conditional_linearize_common(f, x)
-    E_x, V_x = x
-    C = jnp.linalg.solve(V_x.T, Cov_y_x.T).T
-    d = E_y - C @ E_x
-    COV = V_y - C @ V_x @ C.T
-    return C, COV, d
+def _standard_linearize_conditional(c_m, c_cov, x):
+    E_y, Cov_y, Cov_y_x = _linearize_conditional_common(c_m, c_cov, x)
+    m, p = x
+    F = jnp.linalg.solve(p.T, Cov_y_x.T).T
+    b = E_y - F @ m
+    Cov = Cov_y - F @ p @ F.T
+    return F, Cov, b
 
 
-def _sqrt_conditional_linearize(f, x):
-    E_f, Chol_f = f
-    E_x, chol_x = x
-    C = jax.jacfwd(E_f, 0)(E_x)
-    d = E_f(E_x) - C @ E_x
-    if Chol_f(E_x)[..., None].shape[0] == Chol_f(E_x)[..., None].shape[1]:
-        Chol = Chol_f(E_x)
-    else:
-        Chol = jnp.diag(Chol_f(E_x))
-    return C, jnp.diag(Chol_f(E_x)), d
+def _sqrt_linearize_conditional(c_m, c_chol, x):
+    m, _ = x
+    F = jax.jacfwd(c_m, 0)(m)
+    b = c_m(m) - F @ m
+    Chol = c_chol(m)
+    return F, Chol, b
 
 
 def _linearize_callable_common(f, x, q) -> Tuple[Any, Any, Any]:

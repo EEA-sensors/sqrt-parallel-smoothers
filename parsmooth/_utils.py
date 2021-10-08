@@ -58,7 +58,7 @@ def _cholesky_update(chol, update_vector, multiplier=1.):
         new_diagonal_member = jnp.sqrt(jnp.abs(jnp.square(diagonal_member) +
                                                multiplier / b * jnp.square(omega_at_index)))
         # `scaling_factor` is the same as `gamma` on Line 5.
-        scaling_factor = (jnp.square(diagonal_member) * b + multiplier * jnp.square(omega_at_index))
+        scaling_factor = jnp.abs(jnp.square(diagonal_member) * b + multiplier * jnp.square(omega_at_index))
 
         # The following updates are the same as the for loop in lines 6-8.
         omega = omega - (omega_at_index / diagonal_member)[..., None] * col
@@ -79,6 +79,7 @@ def _cholesky_update(chol, update_vector, multiplier=1.):
     new_chol = new_chol.T
     new_chol = _set_diagonal(new_chol, new_diag)
     new_chol = _set_triu(new_chol, 0.)
+    new_chol = jnp.where(jnp.isfinite(new_chol), new_chol, 0.)
     return new_chol
 
 

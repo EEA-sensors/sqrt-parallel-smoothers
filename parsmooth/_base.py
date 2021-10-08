@@ -21,7 +21,7 @@ class FunctionalModel(NamedTuple):
 
 class ConditionalMomentsModel(NamedTuple):
     conditional_mean: Callable
-    conditional_variance: Callable
+    conditional_covariance_or_cholesky: Callable
 
 
 def are_inputs_compatible(*y):

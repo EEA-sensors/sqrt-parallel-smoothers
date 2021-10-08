@@ -4,10 +4,10 @@ import jax.numpy as jnp
 import numpy as np
 
 from parsmooth._base import MVNStandard, FunctionalModel, ConditionalMomentsModel, MVNSqrt
-from parsmooth.linearization._sigma_points import SigmaPoints, linearize_functional, conditional_linearize_callable
+from parsmooth.linearization._sigma_points import SigmaPoints, linearize_functional, linearize_conditional
 
 
-def linearize(f, x):
+def linearize(model, x):
     """
     Cubature linearization for a non-linear function f(x, q). While this may look inefficient for functions with
     additive noise, JAX relies on XLA which compresses linear operations. This means that in practice our code will only
@@ -15,7 +15,7 @@ def linearize(f, x):
 
     Parameters
     ----------
-    f: FunctionalModel or ConditionalMomentsModel
+    model: FunctionalModel or ConditionalMomentsModel
         The function to be called on x and q
     x: MVNStandard or MVNSqrt
         x-coordinate state at which to linearize f
@@ -27,11 +27,11 @@ def linearize(f, x):
     chol_q or cov_q: jnp.ndarray
         Either the cholesky or the full-rank modified covariance matrix.
     """
-    if isinstance(f, FunctionalModel):
-        f, q = f
+    if isinstance(model, FunctionalModel):
+        f, q = model
         return linearize_functional(f, x, q, _get_sigma_points)
-    if isinstance(f, ConditionalMomentsModel):
-        return conditional_linearize_callable(f, x, _get_sigma_points)
+    if isinstance(model, ConditionalMomentsModel):
+        return linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x, _get_sigma_points)
 
 
 def _get_sigma_points(mvn: MVNSqrt) -> Tuple[SigmaPoints, jnp.ndarray]:
