@@ -18,7 +18,7 @@ def config():
     jax.config.update("jax_debug_nans", False)
 
 
-# @pytest.skip("Skip on continuous integration")
+@pytest.skip("Skip on continuous integration")
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("parallel", [True, False])
 def test_linear(linearization_method, parallel):
