@@ -5,23 +5,23 @@ import pytest
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt
 from parsmooth.linearization import cubature, extended
-from parsmooth.methods import iterated_smoothing
+from parsmooth.methods import iterated_smoothing, filtering
 from tests.bearings.bearings_utils import make_parameters
 
-LIST_LINEARIZATIONS = [cubature, extended]
+LIST_LINEARIZATIONS = [cubature]
 
 
 @pytest.fixture(scope="session", autouse=True)
 def config():
-    jax.config.update("jax_enable_x64", True)
+    jax.config.update("jax_enable_x64", False)
     jax.config.update('jax_disable_jit', False)
     jax.config.update("jax_debug_nans", False)
 
 
-@pytest.skip("Skip on continuous integration")
+@pytest.mark.skip("Skip on continuous integration")
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("parallel", [True, False])
-def test_linear(linearization_method, parallel):
+def test_bearings(linearization_method, parallel):
     s1 = jnp.array([-1.5, 0.5])  # First sensor location
     s2 = jnp.array([1., 1.])  # Second sensor location
     r = 0.5  # Observation noise (stddev)
