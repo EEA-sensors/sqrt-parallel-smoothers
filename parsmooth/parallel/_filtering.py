@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
-from parsmooth._utils import tria, none_or_concat, log_normal
+from parsmooth._utils import tria, none_or_concat, mvn_loglikelihood
 from parsmooth.parallel._operators import sqrt_filtering_operator, standard_filtering_operator
 
 
@@ -14,7 +14,8 @@ def filtering(observations: jnp.ndarray,
               transition_model: FunctionalModel,
               observation_model: FunctionalModel,
               linearization_method: Callable,
-              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
+              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
+              return_loglikelihood=False):
     T = observations.shape[0]
     m0, chol_or_cov_0 = x0
     if nominal_trajectory is not None:
@@ -30,7 +31,7 @@ def filtering(observations: jnp.ndarray,
                                                                       observation_model,
                                                                       nominal_trajectory, x0, observations)
         _, filtered_means, filtered_chol_or_cov, _, _ = jax.lax.associative_scan(jax.vmap(sqrt_filtering_operator),
-                                                                          associative_params)
+                                                                                 associative_params)
 
 
     else:
@@ -38,18 +39,25 @@ def filtering(observations: jnp.ndarray,
                                                                           observation_model,
                                                                           nominal_trajectory, x0, observations)
         _, filtered_means, filtered_chol_or_cov, _, _ = jax.lax.associative_scan(jax.vmap(standard_filtering_operator),
-                                                                         associative_params)
-    linearized_ssm = [k[:-1] for k in linearized_ssm]
+                                                                                 associative_params)
+
     filtered_means = none_or_concat(filtered_means, m0, position=1)
     filtered_chol_or_cov = none_or_concat(filtered_chol_or_cov, chol_or_cov_0, position=1)
+
     if isinstance(x0, MVNSqrt):
         res = jax.vmap(MVNSqrt)(filtered_means, filtered_chol_or_cov)
-        ells = jax.vmap(_sqrt_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1], observations)
     else:
         res = jax.vmap(MVNStandard)(filtered_means, filtered_chol_or_cov)
-        ells = jax.vmap(_standard_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1],
+
+    if return_loglikelihood:
+        if isinstance(x0, MVNSqrt):
+            ells = jax.vmap(_sqrt_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1],
                                                  observations)
-    return res, jnp.sum(ells)
+        else:
+            ells = jax.vmap(_standard_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1],
+                                                     observations)
+        return res, jnp.sum(ells)
+    return res
 
 
 def _standard_associative_params(linearization_method, transition_model, observation_model,
@@ -142,7 +150,7 @@ def _sqrt_loglikelihood(F, cholQ, b, H, cholR, c, m_t_1, cholP_t_1, y_t):
     predicted_chol = tria(jnp.concatenate([F @ cholP_t_1, cholQ], axis=1))
     obs_mean = H @ predicted_mean + c
     obs_chol = tria(jnp.concatenate([H @ predicted_chol, cholR], axis=1))
-    return log_normal(y_t - obs_mean, obs_chol)
+    return mvn_loglikelihood(y_t - obs_mean, obs_chol)
 
 
 def _standard_loglikelihood(F, Q, b, H, R, c, m_t_1, P_t_1, y_t):
@@ -151,4 +159,4 @@ def _standard_loglikelihood(F, Q, b, H, R, c, m_t_1, P_t_1, y_t):
     obs_mean = H @ predicted_mean + c
     obs_cov = H @ predicted_cov @ H.T + R
     chol = jnp.linalg.cholesky(obs_cov)
-    return log_normal(y_t - obs_mean, chol)
+    return mvn_loglikelihood(y_t - obs_mean, chol)

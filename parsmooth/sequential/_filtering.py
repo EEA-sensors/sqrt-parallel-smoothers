@@ -5,7 +5,7 @@ import jax.numpy as jnp
 from jax.scipy.linalg import cho_solve, solve_triangular
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
-from parsmooth._utils import tria, none_or_shift, none_or_concat, log_normal
+from parsmooth._utils import tria, none_or_shift, none_or_concat, mvn_loglikelihood
 
 
 def filtering(observations: jnp.ndarray,
@@ -13,7 +13,8 @@ def filtering(observations: jnp.ndarray,
               transition_model: FunctionalModel,
               observation_model: FunctionalModel,
               linearization_method: Callable,
-              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
+              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
+              return_loglikelihood: bool = False):
     if nominal_trajectory is not None:
         are_inputs_compatible(x0, nominal_trajectory)
 
@@ -39,15 +40,18 @@ def filtering(observations: jnp.ndarray,
         if update_ref is None:
             update_ref = x
         H_x, cov_or_chol_R, c = linearization_method(observation_model, update_ref)
-        x, ell = update(H_x, cov_or_chol_R, c, x, y)
-        return x, (x, ell)
+        x, ell_inc = update(H_x, cov_or_chol_R, c, x, y)
+        return (x, ell + ell_inc), x
 
     predict_traj = none_or_shift(nominal_trajectory, -1)
     update_traj = none_or_shift(nominal_trajectory, 1)
 
-    _, xs = jax.lax.scan(body, (x0, 0.), (observations, predict_traj, update_traj))
+    (_, ell), xs = jax.lax.scan(body, (x0, 0.), (observations, predict_traj, update_traj))
     xs = none_or_concat(xs, x0, 1)
-    return xs
+    if return_loglikelihood:
+        return xs, ell
+    else:
+        return xs
 
 
 def _standard_predict(F, Q, b, x):
@@ -70,7 +74,7 @@ def _standard_update(H, R, c, x, y):
 
     m = m + G @ y_diff
     P = P - G @ S @ G.T
-    ell = log_normal(y_diff, chol_S)
+    ell = mvn_loglikelihood(y_diff, chol_S)
     return MVNStandard(m, P), ell
 
 
@@ -101,5 +105,5 @@ def _sqrt_update(H, cholR, c, x, y):
     I = chol_S[:ny, :ny]
 
     m = m + G @ solve_triangular(I, y_diff, lower=True)
-    ell = log_normal(y_diff, I)
+    ell = mvn_loglikelihood(y_diff, I)
     return MVNSqrt(m, cholP), ell

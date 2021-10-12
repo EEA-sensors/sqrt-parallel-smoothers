@@ -124,15 +124,24 @@ def test_vs_sequential_filter(dim_x, dim_y, seed, linearization_method):
     transition_model = FunctionalModel(partial(lgssm_f, A=F), MVNStandard(b, Q))
     observation_model = FunctionalModel(partial(lgssm_h, H=H), MVNStandard(c, R))
 
-    seq_filter_res = seq_filtering(observations, x0, transition_model, observation_model, linearization_method,
-                                   x_nominal)
-    par_filter_res = par_filtering(observations, x0, transition_model, observation_model, linearization_method,
-                                   x_nominal)
+    seq_filter_res, seq_ell = seq_filtering(observations, x0, transition_model, observation_model, linearization_method,
+                                            x_nominal, return_loglikelihood=True)
+    seq_sqrt_filter_res, seq_sqrt_ell = seq_filtering(observations, chol_x0, sqrt_transition_model,
+                                                      sqrt_observation_model,
+                                                      linearization_method, x_nominal_sqrt, return_loglikelihood=True)
+    par_filter_res, par_ell = par_filtering(observations, x0, transition_model, observation_model, linearization_method,
+                                            x_nominal, return_loglikelihood=True)
 
-    sqrt_par_filter_res = par_filtering(observations, chol_x0, sqrt_transition_model, sqrt_observation_model,
-                                        linearization_method, x_nominal_sqrt)
+    sqrt_par_filter_res, par_sqrt_ell = par_filtering(observations, chol_x0, sqrt_transition_model,
+                                                      sqrt_observation_model, linearization_method, x_nominal_sqrt,
+                                                      return_loglikelihood=True)
+
+    assert seq_sqrt_ell == pytest.approx(seq_ell)
+    assert par_ell == pytest.approx(seq_ell)
+    assert par_sqrt_ell == pytest.approx(seq_ell)
 
     np.testing.assert_array_almost_equal(seq_filter_res.mean, par_filter_res.mean)
+    np.testing.assert_array_almost_equal(seq_filter_res.mean, seq_sqrt_filter_res.mean)
     np.testing.assert_array_almost_equal(seq_filter_res.cov, par_filter_res.cov)
     np.testing.assert_array_almost_equal(sqrt_par_filter_res.mean, seq_filter_res.mean)
     np.testing.assert_array_almost_equal(sqrt_par_filter_res.chol @ np.transpose(sqrt_par_filter_res.chol, [0, 2, 1]),
