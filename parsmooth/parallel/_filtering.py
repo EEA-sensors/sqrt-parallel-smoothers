@@ -3,6 +3,7 @@ from typing import Callable, Optional
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
+from jax.experimental.host_callback import id_print
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
 from parsmooth._utils import tria, none_or_concat
@@ -96,6 +97,7 @@ def _sqrt_associative_params(linearization_method, transition_model, observation
 def _sqrt_associative_params_one(linearization_method, transition_model, observation_model,
                                  n_k_1, n_k, m0, L0, y):
     F, cholQ, b = linearization_method(transition_model, n_k_1)
+
     H, cholR, c = linearization_method(observation_model, n_k)
 
     nx = cholQ.shape[0]
