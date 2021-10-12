@@ -1,17 +1,27 @@
 cff-version: 1.0.0
 message: "If you use this software, please cite it as below."
+title: "Robust parallel Gaussian inference in general state-space model"
 authors:
-  - family-names: "Yaghoobi"
-    given-names: "Fatemeh"
-  - family-names: "Corenflos"
-    given-names: "Adrien"
-  - family-names: "Hassan"
-    given-names: "Sakira"
-  - family-names: "S\"arkk\"a"
-    given-names: "Simo"
+- family-names: "Yaghoobi"
+  given-names: "Fatemeh"
+- family-names: "Corenflos"
+  given-names: "Adrien"
+- family-names: "Hassan"
+  given-names: "Sakira"
+- family-names: "S\"arkk\"a"
+  given-names: "Simo"
 preferred-citation:
   type: article
-title: "Robust parallel Gaussian inference in general state-space model"
+  authors:
+    - family-names: "Yaghoobi"
+      given-names: "Fatemeh"
+    - family-names: "Corenflos"
+      given-names: "Adrien"
+    - family-names: "Hassan"
+      given-names: "Sakira"
+    - family-names: "S\"arkk\"a"
+      given-names: "Simo"
+    title: "Robust parallel Gaussian inference in general state-space model"
 version: 0.0.1
 date-released: 2021-10-12
 license: MIT License
