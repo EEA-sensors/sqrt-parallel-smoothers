@@ -34,7 +34,7 @@ def linearize(model, x):
             return _sqrt_linearize_callable(f, m_x, *q)
         return _standard_linearize_callable(f, m_x, *q)
 
-    if isinstance(model, ConditionalMomentsModel):
+    else:
         if isinstance(x, MVNSqrt):
             return _sqrt_linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x)
         return _standard_linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x)
