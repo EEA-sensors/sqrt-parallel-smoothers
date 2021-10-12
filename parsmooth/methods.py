@@ -17,12 +17,13 @@ def filtering(observations: jnp.ndarray,
               observation_model: FunctionalModel,
               linearization_method: Callable,
               nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
-              parallel: bool = True):
+              parallel: bool = True,
+              return_loglikelihood: bool = False):
     if parallel:
         return par_filtering(observations, x0, transition_model, observation_model, linearization_method,
-                             nominal_trajectory)
+                             nominal_trajectory, return_loglikelihood)
     return seq_filtering(observations, x0, transition_model, observation_model, linearization_method,
-                         nominal_trajectory)
+                         nominal_trajectory, return_loglikelihood)
 
 
 def smoothing(transition_model: FunctionalModel, filter_trajectory: MVNSqrt or MVNStandard,
@@ -56,7 +57,8 @@ def iterated_smoothing(observations: jnp.ndarray,
                        linearization_method: Callable,
                        init_nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
                        parallel: bool = True,
-                       criterion: Callable = _default_criterion):
+                       criterion: Callable = _default_criterion,
+                       return_loglikelihood: bool = False):
     if init_nominal_trajectory is None:
         init_nominal_trajectory = filter_smoother(observations, x0, transition_model, observation_model,
                                                   linearization_method, None, parallel)
@@ -65,7 +67,12 @@ def iterated_smoothing(observations: jnp.ndarray,
         return filter_smoother(observations, x0, transition_model, observation_model, linearization_method,
                                curr_nominal_traj, parallel)
 
-    return fixed_point(fun_to_iter, init_nominal_trajectory, criterion)
+    nominal_traj = fixed_point(fun_to_iter, init_nominal_trajectory, criterion)
+    if return_loglikelihood:
+        _, ell = filtering(observations, x0, transition_model, observation_model, linearization_method,
+                           nominal_traj, parallel, return_loglikelihood=True)
+        return nominal_traj, ell
+    return nominal_traj
 
 
 def sampling(key: jnp.ndarray,

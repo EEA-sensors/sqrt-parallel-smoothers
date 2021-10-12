@@ -2,10 +2,10 @@ from typing import Callable, Optional
 
 import jax
 import jax.numpy as jnp
-from jax.scipy.linalg import solve, solve_triangular
+from jax.scipy.linalg import cho_solve, solve_triangular
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
-from parsmooth._utils import tria, none_or_shift, none_or_concat
+from parsmooth._utils import tria, none_or_shift, none_or_concat, mvn_loglikelihood
 
 
 def filtering(observations: jnp.ndarray,
@@ -13,7 +13,8 @@ def filtering(observations: jnp.ndarray,
               transition_model: FunctionalModel,
               observation_model: FunctionalModel,
               linearization_method: Callable,
-              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
+              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
+              return_loglikelihood: bool = False):
     if nominal_trajectory is not None:
         are_inputs_compatible(x0, nominal_trajectory)
 
@@ -27,7 +28,8 @@ def filtering(observations: jnp.ndarray,
             return _sqrt_update(H_x, cov_or_chol, c, x, y)
         return _standard_update(H_x, cov_or_chol, c, x, y)
 
-    def body(x, inp):
+    def body(carry, inp):
+        x, ell = carry
         y, predict_ref, update_ref = inp
 
         if predict_ref is None:
@@ -38,15 +40,18 @@ def filtering(observations: jnp.ndarray,
         if update_ref is None:
             update_ref = x
         H_x, cov_or_chol_R, c = linearization_method(observation_model, update_ref)
-        x = update(H_x, cov_or_chol_R, c, x, y)
-        return x, x
+        x, ell_inc = update(H_x, cov_or_chol_R, c, x, y)
+        return (x, ell + ell_inc), x
 
     predict_traj = none_or_shift(nominal_trajectory, -1)
     update_traj = none_or_shift(nominal_trajectory, 1)
 
-    _, xs = jax.lax.scan(body, x0, (observations, predict_traj, update_traj))
+    (_, ell), xs = jax.lax.scan(body, (x0, 0.), (observations, predict_traj, update_traj))
     xs = none_or_concat(xs, x0, 1)
-    return xs
+    if return_loglikelihood:
+        return xs, ell
+    else:
+        return xs
 
 
 def _standard_predict(F, Q, b, x):
@@ -64,12 +69,13 @@ def _standard_update(H, R, c, x, y):
     y_hat = H @ m + c
     y_diff = y - y_hat
     S = R + H @ P @ H.T
-
-    G = P @ solve(S, H, sym_pos=True).T
+    chol_S = jnp.linalg.cholesky(S)
+    G = P @ cho_solve((chol_S, True), H).T
 
     m = m + G @ y_diff
     P = P - G @ S @ G.T
-    return MVNStandard(m, P)
+    ell = mvn_loglikelihood(y_diff, chol_S)
+    return MVNStandard(m, P), ell
 
 
 def _sqrt_predict(F, cholQ, b, x):
@@ -91,13 +97,13 @@ def _sqrt_update(H, cholR, c, x, y):
 
     M = jnp.block([[H @ cholP, cholR],
                    [cholP, jnp.zeros_like(cholP, shape=(nx, ny))]])
-    S = tria(M)
+    chol_S = tria(M)
 
-    cholP = S[ny:, ny:]
+    cholP = chol_S[ny:, ny:]
 
-    G = S[ny:, :ny]
-    I = S[:ny, :ny]
+    G = chol_S[ny:, :ny]
+    I = chol_S[:ny, :ny]
 
     m = m + G @ solve_triangular(I, y_diff, lower=True)
-
-    return MVNSqrt(m, cholP)
+    ell = mvn_loglikelihood(y_diff, I)
+    return MVNSqrt(m, cholP), ell

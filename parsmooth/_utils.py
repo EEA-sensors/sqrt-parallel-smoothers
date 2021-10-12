@@ -1,9 +1,8 @@
 from functools import partial
 
 import jax
-import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
-from jax import custom_vjp, vjp
+from jax import custom_vjp, vjp, numpy as jnp
 from jax.custom_derivatives import closure_convert
 from jax.flatten_util import ravel_pytree
 from jax.lax import while_loop
@@ -149,3 +148,14 @@ def __fixed_point(f, params, x0, criterion):
 
 
 _fixed_point.defvjp(_fixed_point_fwd, _fixed_point_rev)
+
+
+def mvn_loglikelihood(x, chol_cov):
+    """multivariate normal"""
+    dim = chol_cov.shape[0]
+    y = jax.scipy.linalg.solve_triangular(chol_cov, x, lower=True)
+    normalizing_constant = (
+            jnp.sum(jnp.log(jnp.abs(jnp.diag(chol_cov)))) + dim * jnp.log(2 * jnp.pi) / 2.0
+    )
+    norm_y = jnp.sum(y * y, -1)
+    return -0.5 * norm_y - normalizing_constant
