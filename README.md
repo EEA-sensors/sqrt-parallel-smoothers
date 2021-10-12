@@ -53,6 +53,7 @@ fatemeh[dot]yaghoobi[at]aalto[dot]fi.
 [2]: 
 
 ## How to cite
-If you use our code/build on our work, please cite us! The correct bibtex entries are included in the repository.
+If you use our code/build on our work, please cite us! The correct bibtex entry is given by the cite this repository
+widget.
 
 
