@@ -6,6 +6,7 @@ import pytest
 from jax.scipy.linalg import solve
 
 from parsmooth._base import FunctionalModel, MVNStandard, MVNSqrt
+from parsmooth._utils import mvn_loglikelihood
 from parsmooth.linearization import cubature, extended
 from parsmooth.sequential._filtering import _sqrt_predict, _standard_predict, _sqrt_update, _standard_update, filtering
 from tests._lgssm import get_data, transition_function as lgssm_f, observation_function as lgssm_h
@@ -64,9 +65,9 @@ def test_update_value(dim_x, dim_y, seed, sqrt):
     x, chol_x, H, R, cholR, c, y = get_system(dim_x, dim_y)
 
     if sqrt:
-        next_x = _sqrt_update(H, cholR, c, chol_x, y)
+        next_x, ell = _sqrt_update(H, cholR, c, chol_x, y)
     else:
-        next_x = _standard_update(H, R, c, x, y)
+        next_x, ell = _standard_update(H, R, c, x, y)
 
     if sqrt:
         cov = next_x.chol @ next_x.chol.T
@@ -79,6 +80,9 @@ def test_update_value(dim_x, dim_y, seed, sqrt):
     np.testing.assert_allclose(next_x.mean, x.mean + K @ res, atol=1e-1)
     np.testing.assert_allclose(cov, x.cov - K @ H @ x.cov, atol=1e-5)
 
+    expected_ell = mvn_loglikelihood(res, np.linalg.cholesky(S))
+    np.testing.assert_allclose(expected_ell, ell, atol=1e-5)
+
 
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_y", [1, 2, 3])
@@ -87,24 +91,26 @@ def test_update_standard_vs_sqrt(dim_x, dim_y, seed):
     np.random.seed(seed)
     x, chol_x, H, R, cholR, c, y = get_system(dim_x, dim_y)
 
-    x = _standard_update(H, R, c, x, y)
-    chol_x = _sqrt_update(H, cholR, c, chol_x, y)
+    x, ell = _standard_update(H, R, c, x, y)
+    chol_x, chol_ell = _sqrt_update(H, cholR, c, chol_x, y)
 
     np.testing.assert_allclose(x.cov, chol_x.chol @ chol_x.chol.T, atol=1e-5)
     np.testing.assert_allclose(x.mean, chol_x.mean, atol=1e-5)
+    np.testing.assert_allclose(ell, chol_ell, atol=1e-5)
 
 
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_y", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-def test_update_standard_vs_sqrt_no_noise(dim_x, dim_y, seed):
+def test_update_standard_vs_sqrt_no_info(dim_x, dim_y, seed):
     np.random.seed(seed)
     x, chol_x, H, R, cholR, c, y = get_system(dim_x, dim_y)
-    R *= 1e9
-    cholR *= 1e9
-    next_x = _standard_update(H, R, c, x, y)
-    next_chol_x = _sqrt_update(H, cholR, c, chol_x, y)
+    R *= 1e8
+    cholR *= 1e4
+    next_x, ell = _standard_update(H, R, c, x, y)
+    next_chol_x, chol_ell = _sqrt_update(H, cholR, c, chol_x, y)
 
+    np.testing.assert_allclose(ell, chol_ell, atol=1e-3)
     np.testing.assert_allclose(x.cov, next_x.cov, atol=1e-3)
     np.testing.assert_allclose(x.mean, next_x.mean, atol=1e-3)
     np.testing.assert_allclose(chol_x.chol @ chol_x.chol.T, next_chol_x.chol @ next_chol_x.chol.T, atol=1e-3)
@@ -124,6 +130,7 @@ def test_filter_no_info(dim_x, dim_y, seed, sqrt, linearization_method):
     if sqrt:
         x0 = chol_x0
     _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
+
     R = 1e12 * R
     cholR = 1e6 * cholR
     true_states, observations = get_data(x0.mean, F, H, R, Q, b, c, T)
@@ -140,6 +147,7 @@ def test_filter_no_info(dim_x, dim_y, seed, sqrt, linearization_method):
 
     for t in range(T):
         expected_mean.append(fun(expected_mean[-1]))
+
     filtered_states = filtering(observations, x0, transition_model, observation_model, linearization_method, None)
     np.testing.assert_allclose(filtered_states.mean, expected_mean, atol=1e-3, rtol=1e-3)
 
