@@ -3,10 +3,9 @@ from typing import Callable, Optional
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
-from jax.experimental.host_callback import id_print
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
-from parsmooth._utils import tria, none_or_concat
+from parsmooth._utils import tria, none_or_concat, log_normal
 from parsmooth.parallel._operators import sqrt_filtering_operator, standard_filtering_operator
 
 
@@ -17,30 +16,40 @@ def filtering(observations: jnp.ndarray,
               linearization_method: Callable,
               nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
     T = observations.shape[0]
+    m0, chol_or_cov_0 = x0
     if nominal_trajectory is not None:
         are_inputs_compatible(x0, nominal_trajectory)
 
     else:
-        m0, chol_or_cov_0 = x0
         nominal_mean = jnp.zeros_like(m0, shape=(T + 1,) + m0.shape)
         nominal_cov_or_chol = jnp.repeat(jnp.eye(m0.shape[-1])[None, ...], T + 1, 0)
         nominal_trajectory = type(x0)(nominal_mean, nominal_cov_or_chol)  # this is kind of a hack but I've seen worse.
 
     if isinstance(x0, MVNSqrt):
-        associative_params = _sqrt_associative_params(linearization_method, transition_model, observation_model,
-                                                      nominal_trajectory, x0, observations)
-        _, filtered_means, filtered_chol, _, _ = jax.lax.associative_scan(jax.vmap(sqrt_filtering_operator),
+        associative_params, linearized_ssm = _sqrt_associative_params(linearization_method, transition_model,
+                                                                      observation_model,
+                                                                      nominal_trajectory, x0, observations)
+        _, filtered_means, filtered_chol_or_cov, _, _ = jax.lax.associative_scan(jax.vmap(sqrt_filtering_operator),
                                                                           associative_params)
-        res = jax.vmap(MVNSqrt)(filtered_means, filtered_chol)
+
 
     else:
-        associative_params = _standard_associative_params(linearization_method, transition_model, observation_model,
-                                                          nominal_trajectory, x0, observations)
-        _, filtered_means, filtered_cov, _, _ = jax.lax.associative_scan(jax.vmap(standard_filtering_operator),
+        associative_params, linearized_ssm = _standard_associative_params(linearization_method, transition_model,
+                                                                          observation_model,
+                                                                          nominal_trajectory, x0, observations)
+        _, filtered_means, filtered_chol_or_cov, _, _ = jax.lax.associative_scan(jax.vmap(standard_filtering_operator),
                                                                          associative_params)
-        res = jax.vmap(MVNStandard)(filtered_means, filtered_cov)
-
-    return none_or_concat(res, x0, position=1)
+    linearized_ssm = [k[:-1] for k in linearized_ssm]
+    filtered_means = none_or_concat(filtered_means, m0, position=1)
+    filtered_chol_or_cov = none_or_concat(filtered_chol_or_cov, chol_or_cov_0, position=1)
+    if isinstance(x0, MVNSqrt):
+        res = jax.vmap(MVNSqrt)(filtered_means, filtered_chol_or_cov)
+        ells = jax.vmap(_sqrt_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1], observations)
+    else:
+        res = jax.vmap(MVNStandard)(filtered_means, filtered_chol_or_cov)
+        ells = jax.vmap(_standard_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1],
+                                                 observations)
+    return res, jnp.sum(ells)
 
 
 def _standard_associative_params(linearization_method, transition_model, observation_model,
@@ -76,7 +85,7 @@ def _standard_associative_params_one(linearization_method, transition_model, obs
     eta = temp @ (y - H @ b - c)
     J = temp @ H @ F
 
-    return A, b_std, C, eta, J
+    return (A, b_std, C, eta, J), (F, Q, b, H, R, c)
 
 
 def _sqrt_associative_params(linearization_method, transition_model, observation_model,
@@ -125,4 +134,21 @@ def _sqrt_associative_params_one(linearization_method, transition_model, observa
     else:
         Z = tria(Z)
 
-    return A, b_sqr, U, eta, Z
+    return (A, b_sqr, U, eta, Z), (F, cholQ, b, H, cholR, c)
+
+
+def _sqrt_loglikelihood(F, cholQ, b, H, cholR, c, m_t_1, cholP_t_1, y_t):
+    predicted_mean = F @ m_t_1 + b
+    predicted_chol = tria(jnp.concatenate([F @ cholP_t_1, cholQ], axis=1))
+    obs_mean = H @ predicted_mean + c
+    obs_chol = tria(jnp.concatenate([H @ predicted_chol, cholR], axis=1))
+    return log_normal(y_t - obs_mean, obs_chol)
+
+
+def _standard_loglikelihood(F, Q, b, H, R, c, m_t_1, P_t_1, y_t):
+    predicted_mean = F @ m_t_1 + b
+    predicted_cov = F @ P_t_1 @ F.T + Q
+    obs_mean = H @ predicted_mean + c
+    obs_cov = H @ predicted_cov @ H.T + R
+    chol = jnp.linalg.cholesky(obs_cov)
+    return log_normal(y_t - obs_mean, chol)

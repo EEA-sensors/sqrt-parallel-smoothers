@@ -40,7 +40,7 @@ def filter_smoother(observations: jnp.ndarray,
                     linearization_method: Callable,
                     nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
                     parallel: bool = True):
-    filter_trajectory = filtering(observations, x0, transition_model, observation_model, linearization_method,
+    filter_trajectory, _ = filtering(observations, x0, transition_model, observation_model, linearization_method,
                                   nominal_trajectory, parallel)
     return smoothing(transition_model, filter_trajectory, linearization_method, nominal_trajectory, parallel)
 
@@ -65,7 +65,10 @@ def iterated_smoothing(observations: jnp.ndarray,
         return filter_smoother(observations, x0, transition_model, observation_model, linearization_method,
                                curr_nominal_traj, parallel)
 
-    return fixed_point(fun_to_iter, init_nominal_trajectory, criterion)
+    nominal_traj = fixed_point(fun_to_iter, init_nominal_trajectory, criterion)
+    _, ell = filtering(observations, x0, transition_model, observation_model, linearization_method,
+                               nominal_traj, parallel)
+    return nominal_traj, ell
 
 
 def sampling(key: jnp.ndarray,
