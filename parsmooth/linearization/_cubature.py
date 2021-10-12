@@ -30,8 +30,8 @@ def linearize(model, x):
     if isinstance(model, FunctionalModel):
         f, q = model
         return linearize_functional(f, x, q, _get_sigma_points)
-    else:
-        return linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x, _get_sigma_points)
+    conditional_mean, conditional_covariance_or_cholesky = model
+    return linearize_conditional(conditional_mean, conditional_covariance_or_cholesky, x, _get_sigma_points)
 
 
 def _get_sigma_points(mvn: MVNSqrt) -> Tuple[SigmaPoints, jnp.ndarray]:
