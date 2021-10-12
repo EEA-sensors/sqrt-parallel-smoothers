@@ -22,11 +22,49 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
     return jnp.dot(one, two)
 
 
-def linearize_callable(f, x, q, get_sigma_points):
+def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
+    F_x, x_pts, f_pts, m_f, v_f = linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points)
+
+    if isinstance(x, MVNSqrt):
+        m_x, chol_x = x
+        sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
+        sqrt_Phi = tria(sqrt_Phi.T)
+        chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
+        chol_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
+        chol_f = jnp.zeros((int(len(x_pts.wc) / 2), int(len(x_pts.wc) / 2)))
+        for i in range(len(x_pts.wc)):
+            chol_f = chol_f + x_pts.wc[i] * chol_pts[i, :, :]
+        L = tria(jnp.concatenate([chol_L, chol_f], axis=1))
+        return F_x, L, m_f - F_x @ m_x
+
+    m_x, cov_x = x
+    Phi = _cov(x_pts.wc, f_pts, m_f, f_pts, m_f)
+    L = Phi - F_x @ cov_x @ F_x.T + v_f
+    return F_x, L, m_f - F_x @ m_x
+
+
+def linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points):
+    x = get_mvnsqrt(x)
+    m_x, chol_x = x
+
+    x_pts = get_sigma_points(x)
+
+    f_pts = jax.vmap(c_m)(x_pts.points)
+    V_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
+
+    m_f = jnp.dot(x_pts.wm, f_pts)
+    v_f = jnp.zeros((int(len(x_pts.wc)/2), int(len(x_pts.wc)/2)))
+    for i in range(len(x_pts.wc)):
+        v_f = v_f + x_pts.wc[i] * V_pts[i, :, :]
+    Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
+    F_x = cho_solve((chol_x, True), Psi_x).T
+    return F_x, x_pts, f_pts, m_f, v_f
+
+
+def linearize_functional(f, x, q, get_sigma_points):
     are_inputs_compatible(x, q)
 
-    F_x, F_q, xq_pts, f_pts, m_f = _linearize_callable_common(f, x, q, get_sigma_points)
-    m_q, _ = q
+    F_x, _, xq_pts, f_pts, m_f = _linearize_functional_common(f, x, q, get_sigma_points)
     if isinstance(x, MVNSqrt):
         m_x, chol_x = x
         sqrt_Phi = jnp.sqrt(xq_pts.wc[:, None]) * (f_pts - m_f[None, :])
@@ -40,7 +78,7 @@ def linearize_callable(f, x, q, get_sigma_points):
     return F_x, L, m_f - F_x @ m_x
 
 
-def _linearize_callable_common(f, x, q, get_sigma_points):
+def _linearize_functional_common(f, x, q, get_sigma_points):
     x = get_mvnsqrt(x)
     q = get_mvnsqrt(q)
     m_x, chol_x = x
