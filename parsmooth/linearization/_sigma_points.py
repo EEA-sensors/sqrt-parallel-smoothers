@@ -24,7 +24,6 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
 
 def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
     F_x, x_pts, f_pts, m_f, v_f = linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points)
-
     if isinstance(x, MVNSqrt):
         m_x, chol_x = x
         sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
@@ -46,14 +45,13 @@ def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
 def linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points):
     x = get_mvnsqrt(x)
     m_x, chol_x = x
-
     x_pts = get_sigma_points(x)
 
     f_pts = jax.vmap(c_m)(x_pts.points)
     V_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
-
+    dim = V_pts.shape[1]
     m_f = jnp.dot(x_pts.wm, f_pts)
-    v_f = jnp.zeros((int(len(x_pts.wc)/2), int(len(x_pts.wc)/2)))
+    v_f = jnp.zeros((dim, dim))
     for i in range(len(x_pts.wc)):
         v_f = v_f + x_pts.wc[i] * V_pts[i, :, :]
     Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
