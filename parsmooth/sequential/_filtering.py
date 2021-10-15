@@ -39,7 +39,6 @@ def filtering(observations: jnp.ndarray,
         if update_ref is None:
             update_ref = x
         H_x, cov_or_chol_R, c = linearization_method(observation_model, update_ref)
-        print("E = ", cov_or_chol_R)
         x, ell_inc = update(H_x, cov_or_chol_R, c, x, y)
         return (x, ell + ell_inc), x
 
