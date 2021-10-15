@@ -1,21 +1,21 @@
-from typing import Any, Tuple
+from typing import Any, Tuple, Union
 
 import jax
 import jax.numpy as jnp
 
-from parsmooth._base import FunctionalModel, ConditionalMomentsModel, MVNSqrt, are_inputs_compatible
+from parsmooth._base import FunctionalModel, ConditionalMomentsModel, MVNSqrt, are_inputs_compatible, MVNStandard
 
 
-def linearize(model, x):
+def linearize(model: Union[FunctionalModel, ConditionalMomentsModel], x: Union[MVNSqrt, MVNStandard]):
     """
     Extended linearization for a non-linear function f(x, q). If the function is linear, JAX Jacobian calculation will
     simply return the matrices without additional complexity.
 
     Parameters
     ----------
-    model: FunctionalModel or ConditionalMomentsModel
+    model: Union[FunctionalModel, ConditionalMomentsModel]
         The function to be called on x and q
-    x: MVNStandard or MVNSqrt
+    x: Union[MVNSqrt, MVNStandard]
         x-coordinate state at which to linearize f
 
     Returns

@@ -1,21 +1,20 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
-from jax.experimental.host_callback import id_print
 
-from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
+from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible, ConditionalMomentsModel
 from parsmooth._utils import tria, none_or_concat, mvn_loglikelihood
 from parsmooth.parallel._operators import sqrt_filtering_operator, standard_filtering_operator
 
 
 def filtering(observations: jnp.ndarray,
-              x0: MVNStandard or MVNSqrt,
-              transition_model: FunctionalModel,
-              observation_model: FunctionalModel,
+              x0: Union[MVNSqrt, MVNStandard],
+              transition_model: Union[FunctionalModel, ConditionalMomentsModel],
+              observation_model: Union[FunctionalModel, ConditionalMomentsModel],
               linearization_method: Callable,
-              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
+              nominal_trajectory: Optional[Union[MVNSqrt, MVNStandard]] = None,
               return_loglikelihood=False):
     T = observations.shape[0]
     m0, chol_or_cov_0 = x0

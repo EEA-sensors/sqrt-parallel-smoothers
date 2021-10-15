@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -7,7 +7,7 @@ from parsmooth._base import MVNStandard, FunctionalModel, ConditionalMomentsMode
 from parsmooth.linearization._sigma_points import SigmaPoints, linearize_functional, linearize_conditional
 
 
-def linearize(model, x):
+def linearize(model: Union[FunctionalModel, ConditionalMomentsModel], x: Union[MVNSqrt, MVNStandard]):
     """
     Cubature linearization for a non-linear function f(x, q). While this may look inefficient for functions with
     additive noise, JAX relies on XLA which compresses linear operations. This means that in practice our code will only
@@ -15,9 +15,9 @@ def linearize(model, x):
 
     Parameters
     ----------
-    model: FunctionalModel or ConditionalMomentsModel
+    model: Union[FunctionalModel, ConditionalMomentsModel]
         The function to be called on x and q
-    x: MVNStandard or MVNSqrt
+    x: Union[MVNSqrt, MVNStandard]
         x-coordinate state at which to linearize f
 
     Returns
