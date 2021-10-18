@@ -5,7 +5,7 @@ import pytest
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt
 from parsmooth.linearization import cubature, extended
-from parsmooth.methods import iterated_smoothing, filtering
+from parsmooth.methods import iterated_smoothing
 from tests.bearings.bearings_utils import make_parameters
 
 LIST_LINEARIZATIONS = [cubature]
@@ -29,12 +29,12 @@ def test_bearings(linearization_method, parallel):
     qc = 0.01  # discretization noise
     qw = 0.1  # discretization noise
 
-    ys = np.load("bearings/ys.npy")
+    ys = np.load("./bearings//ys.npy")
     if linearization_method is extended:
-        with np.load("bearings/ieks.npz") as loaded:
+        with np.load("./bearings//ieks.npz") as loaded:
             expected_mean, expected_cov = loaded["arr_0"], loaded["arr_1"]
     elif linearization_method is cubature:
-        with np.load("bearings/icks.npz") as loaded:
+        with np.load("./bearings//icks.npz") as loaded:
             expected_mean, expected_cov = loaded["arr_0"], loaded["arr_1"]
     else:
         pytest.skip("We don't have regression data for this linearization")
