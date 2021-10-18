@@ -29,7 +29,7 @@ def test_bearings(linearization_method, parallel):
     qc = 0.01  # discretization noise
     qw = 0.1  # discretization noise
 
-    ys = np.load("./bearings//ys.npy")
+    ys = np.load("./bearings/ys.npy")
     if linearization_method is extended:
         with np.load("./bearings//ieks.npz") as loaded:
             expected_mean, expected_cov = loaded["arr_0"], loaded["arr_1"]
