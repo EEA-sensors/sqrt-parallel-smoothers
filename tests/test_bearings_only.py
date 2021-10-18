@@ -18,7 +18,7 @@ def config():
     jax.config.update("jax_debug_nans", False)
 
 
-@pytest.mark.skip("Skip on continuous integration")
+# @pytest.mark.skip("Skip on continuous integration")
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("parallel", [True, False])
 def test_bearings(linearization_method, parallel):
