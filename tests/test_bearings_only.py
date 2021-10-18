@@ -18,7 +18,7 @@ def config():
     jax.config.update("jax_debug_nans", False)
 
 
-# @pytest.mark.skip("Skip on continuous integration")
+@pytest.mark.skip("Skip on continuous integration")
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("parallel", [True, False])
 def test_bearings(linearization_method, parallel):
@@ -29,7 +29,7 @@ def test_bearings(linearization_method, parallel):
     qc = 0.01  # discretization noise
     qw = 0.1  # discretization noise
 
-    ys = np.load("./bearings/ys.npy", allow_pickle=True)
+    ys = np.load("./bearings/ys.npy")
     if linearization_method is extended:
         with np.load("./bearings//ieks.npz") as loaded:
             expected_mean, expected_cov = loaded["arr_0"], loaded["arr_1"]
