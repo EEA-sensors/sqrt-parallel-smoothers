@@ -10,7 +10,7 @@ from parsmooth.linearization._sigma_points import SigmaPoints, linearize_functio
 
 def linearize(model: Union[FunctionalModel, ConditionalMomentsModel],
               x: Union[MVNSqrt, MVNStandard],
-              alpha: float = 0.5, beta: float = 2., kappa: float = None):
+              alpha: float = 1., beta: float = 0., kappa: float = None):
     """
     Unscented linearization for a non-linear function f(x, q). While this may look inefficient for functions with
     additive noise, JAX relies on XLA which compresses linear operations. This means that in practice our code will only
@@ -23,7 +23,7 @@ def linearize(model: Union[FunctionalModel, ConditionalMomentsModel],
     x: Union[MVNSqrt, MVNStandard]
         x-coordinate state at which to linearize f
     alpha, beta, kappa: float, optional
-        Parameters of the unscented transform. Default is `alpha=0.5`, `beta=2.` and `kappa=3-n`
+        Parameters of the unscented transform. Default is `alpha=1.`, `beta=0.` and `kappa=3-n`
 
     Returns
     -------
@@ -67,8 +67,8 @@ def _get_sigma_points(
     wm, wc, lamda = _unscented_weights(n_dim, alpha, beta, kappa)
     scaled_chol = jnp.sqrt(n_dim + lamda) * mvn.chol
 
-    zeros = jnp.zeros((n_dim, 1))
-    sigma_points = mean[None, :] + jnp.concatenate([zeros, scaled_chol, -scaled_chol], axis=1)
+    zeros = jnp.zeros((1, n_dim))
+    sigma_points = mean[None, :] + jnp.concatenate([zeros, scaled_chol, -scaled_chol], axis=0)
     return SigmaPoints(sigma_points, wm, wc)
 
 
