@@ -1,17 +1,19 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
 
-from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
+from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible, ConditionalMomentsModel
 from parsmooth._utils import none_or_concat, tria
 from parsmooth.parallel._operators import sqrt_smoothing_operator, \
     standard_smoothing_operator
 
 
-def smoothing(transition_model: FunctionalModel, filter_trajectory: MVNSqrt or MVNStandard,
-              linearization_method: Callable, nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None):
+def smoothing(transition_model: Union[FunctionalModel, ConditionalMomentsModel],
+              filter_trajectory: Union[MVNSqrt, MVNStandard],
+              linearization_method: Callable,
+              nominal_trajectory: Optional[Union[MVNSqrt, MVNStandard]] = None):
     if nominal_trajectory is not None:
         are_inputs_compatible(filter_trajectory, nominal_trajectory)
 

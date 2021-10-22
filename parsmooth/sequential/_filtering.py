@@ -1,19 +1,19 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import jax
 import jax.numpy as jnp
 from jax.scipy.linalg import cho_solve, solve_triangular
 
-from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible
+from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible, ConditionalMomentsModel
 from parsmooth._utils import tria, none_or_shift, none_or_concat, mvn_loglikelihood
 
 
 def filtering(observations: jnp.ndarray,
-              x0: MVNStandard or MVNSqrt,
-              transition_model: FunctionalModel,
-              observation_model: FunctionalModel,
+              x0: Union[MVNSqrt, MVNStandard],
+              transition_model: Union[FunctionalModel, ConditionalMomentsModel],
+              observation_model: Union[FunctionalModel, ConditionalMomentsModel],
               linearization_method: Callable,
-              nominal_trajectory: Optional[MVNStandard or MVNSqrt] = None,
+              nominal_trajectory: Optional[Union[MVNSqrt, MVNStandard]] = None,
               return_loglikelihood: bool = False):
     if nominal_trajectory is not None:
         are_inputs_compatible(x0, nominal_trajectory)
@@ -36,7 +36,6 @@ def filtering(observations: jnp.ndarray,
             predict_ref = x
         F_x, cov_or_chol_Q, b = linearization_method(transition_model, predict_ref)
         x = predict(F_x, cov_or_chol_Q, b, x)
-
         if update_ref is None:
             update_ref = x
         H_x, cov_or_chol_R, c = linearization_method(observation_model, update_ref)

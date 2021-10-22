@@ -1,9 +1,11 @@
+from typing import Union
+
 from jax import numpy as jnp
 
 from parsmooth._base import MVNStandard, MVNSqrt
 
 
-def get_mvnsqrt(x: MVNStandard or MVNSqrt):
+def get_mvnsqrt(x: Union[MVNSqrt, MVNStandard]):
     if isinstance(x, MVNSqrt):
         return x
     m_x, cov_x = x

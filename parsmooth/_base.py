@@ -1,5 +1,5 @@
 import itertools
-from typing import NamedTuple, Callable, Any
+from typing import NamedTuple, Callable, Any, Union
 
 
 class MVNStandard(NamedTuple):
@@ -14,7 +14,7 @@ class MVNSqrt(NamedTuple):
 
 class FunctionalModel(NamedTuple):
     function: Callable
-    mvn: MVNStandard or MVNSqrt
+    mvn: Union[MVNSqrt, MVNStandard]
 
 
 class ConditionalMomentsModel(NamedTuple):

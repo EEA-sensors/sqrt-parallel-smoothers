@@ -24,16 +24,17 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
 
 def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
     F_x, x_pts, f_pts, m_f, v_f = linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points)
-
     if isinstance(x, MVNSqrt):
         m_x, chol_x = x
+        
         sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
         sqrt_Phi = tria(sqrt_Phi.T)
+        
         chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
         chol_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
-        chol_f = jnp.zeros((int(len(x_pts.wc) / 2), int(len(x_pts.wc) / 2)))
-        for i in range(len(x_pts.wc)):
-            chol_f = chol_f + x_pts.wc[i] * chol_pts[i, :, :]
+        
+        chol_f = jnp.sum(x_pts.wc[:, None, None] * chol_pts, 0)
+        
         L = tria(jnp.concatenate([chol_L, chol_f], axis=1))
         return F_x, L, m_f - F_x @ m_x
 
@@ -46,16 +47,14 @@ def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
 def linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points):
     x = get_mvnsqrt(x)
     m_x, chol_x = x
-
     x_pts = get_sigma_points(x)
 
     f_pts = jax.vmap(c_m)(x_pts.points)
     V_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
-
+    
     m_f = jnp.dot(x_pts.wm, f_pts)
-    v_f = jnp.zeros((int(len(x_pts.wc)/2), int(len(x_pts.wc)/2)))
-    for i in range(len(x_pts.wc)):
-        v_f = v_f + x_pts.wc[i] * V_pts[i, :, :]
+    v_f = jnp.sum(x_pts.wc[:, None, None] * V_pts, 0)
+    
     Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
     F_x = cho_solve((chol_x, True), Psi_x).T
     return F_x, x_pts, f_pts, m_f, v_f
