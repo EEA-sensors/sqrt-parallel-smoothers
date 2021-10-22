@@ -39,6 +39,15 @@ def test_bearings(linearization_method, parallel):
     else:
         pytest.skip("We don't have regression data for this linearization")
 
+    T = ys.shape[0] + 1
+    # init_position = inverse_bearings(ys, s1, s2)
+    init_mean = jnp.concatenate([expected_mean[None, 0], expected_mean], 0)
+    init_trajectory_cov = jnp.concatenate([expected_cov[None, 0], expected_cov], 0)
+    init_trajectory_chol = jax.vmap(jnp.linalg.cholesky)(init_trajectory_cov)
+
+    init_traj_sqrt = MVNSqrt(init_mean, init_trajectory_chol)
+    init_traj = MVNStandard(init_mean, init_trajectory_cov)
+
     Q, R, observation_function, transition_function = make_parameters(qc, qw, r, dt, s1, s2)
 
     m0 = jnp.array([-1., -1., 0., 0., 0.])
@@ -57,11 +66,11 @@ def test_bearings(linearization_method, parallel):
     observation_model = FunctionalModel(observation_function, MVNStandard(jnp.zeros((2,)), R))
 
     sqrt_iterated_res = iterated_smoothing(ys, chol_init, sqrt_transition_model, sqrt_observation_model,
-                                           linearization_method, None, parallel,
-                                           criterion=lambda i, *_: i < 100)
+                                           linearization_method, init_traj_sqrt, parallel,
+                                           criterion=lambda i, *_: i < 10)
 
     iterated_res = iterated_smoothing(ys, init, transition_model, observation_model,
-                                      linearization_method, None, parallel,
+                                      linearization_method, init_traj, parallel,
                                       criterion=lambda i, *_: i < 100)
 
     np.testing.assert_array_almost_equal(iterated_res.mean[1:], expected_mean, decimal=3)  # noqa
