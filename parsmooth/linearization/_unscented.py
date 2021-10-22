@@ -97,7 +97,7 @@ def _unscented_weights(n_dim: int, alpha: float, beta: float, kappa: Optional[fl
     lamda = alpha ** 2 * (n_dim + kappa) - n_dim
     wm = jnp.full(2 * n_dim + 1, 1 / (2 * (n_dim + lamda)))
 
-    wm = jax.ops.index_update(wm, 0, lamda / (n_dim + lamda))
-    wc = jax.ops.index_update(wm, 0, lamda / (n_dim + lamda) + (1 - alpha ** 2 + beta))
-
+    wm = jax.ops.index_update(wm, 0, lamda / (n_dim + lamda), indices_are_sorted=True, unique_indices=True)
+    wc = jax.ops.index_update(wm, 0, lamda / (n_dim + lamda) + (1 - alpha ** 2 + beta), indices_are_sorted=True,
+                              unique_indices=True)
     return wm, wc, lamda
