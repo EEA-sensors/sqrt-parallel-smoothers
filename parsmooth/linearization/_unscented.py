@@ -63,12 +63,12 @@ def _get_sigma_points(
     mean, chol = mvn
     n_dim = mean.shape[0]
     if kappa is None:
-        kappa = 3. - n_dim
+        kappa = 3. + n_dim
     wm, wc, lamda = _unscented_weights(n_dim, alpha, beta, kappa)
     scaled_chol = jnp.sqrt(n_dim + lamda) * mvn.chol
 
     zeros = jnp.zeros((1, n_dim))
-    sigma_points = mean[None, :] + jnp.concatenate([zeros, scaled_chol, -scaled_chol], axis=0)
+    sigma_points = mean[None, :] + jnp.concatenate([zeros, scaled_chol.T, -scaled_chol.T], axis=0)
     return SigmaPoints(sigma_points, wm, wc)
 
 
