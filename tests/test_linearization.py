@@ -1,13 +1,15 @@
 from functools import partial
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import pytest
-import jax.numpy as jnp
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, ConditionalMomentsModel
 from parsmooth._utils import tria
-from parsmooth.linearization import extended, cubature
+from parsmooth.linearization import extended, cubature, gauss_hermite, unscented
+
+LINEARIZATION_METHODS = [extended, cubature, gauss_hermite, unscented]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -42,7 +44,7 @@ def linear_conditional_chol(_x, b, chol_q):
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_q", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-@pytest.mark.parametrize("method", [cubature, extended])
+@pytest.mark.parametrize("method", LINEARIZATION_METHODS)
 @pytest.mark.parametrize("sqrt", [True, False])
 def test_linear_functional(dim_x, dim_q, seed, method, sqrt):
     # TODO: use get_system to reduce the number of lines
@@ -87,7 +89,7 @@ def test_linear_functional(dim_x, dim_q, seed, method, sqrt):
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_q", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-@pytest.mark.parametrize("method", [cubature, extended])
+@pytest.mark.parametrize("method", LINEARIZATION_METHODS)
 @pytest.mark.parametrize("sqrt", [True, False])
 def test_linear_conditional(dim_x, dim_q, seed, method, sqrt):
     # TODO: use get_system to reduce the number of lines
