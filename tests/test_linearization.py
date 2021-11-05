@@ -89,7 +89,7 @@ def test_linear_functional(dim_x, dim_q, seed, method, sqrt):
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("dim_q", [1, 2, 3])
 @pytest.mark.parametrize("seed", [0, 42])
-@pytest.mark.parametrize("method", [cubature])
+@pytest.mark.parametrize("method", LINEARIZATION_METHODS)
 @pytest.mark.parametrize("sqrt", [True, False])
 def test_linear_conditional(dim_x, dim_q, seed, method, sqrt):
     # TODO: use get_system to reduce the number of lines
@@ -122,7 +122,6 @@ def test_linear_conditional(dim_x, dim_q, seed, method, sqrt):
     if sqrt:
         Q_lin = Q_lin @ Q_lin.T
     x_prime = np.random.randn(dim_x)
-
     expected = linear_conditional_mean(x_prime, m_q, a, b, c)
     actual = F_x @ x_prime + remainder
     expected_Q = (b @ chol_q) @ (b @ chol_q).T
@@ -166,21 +165,24 @@ def test_sqrt_vs_std_additive(dim_x, seed, method, test_fun):
 
 
 @pytest.mark.parametrize("dim_x", [1, 3])
+@pytest.mark.parametrize("dim_q", [1, 3])
 @pytest.mark.parametrize("seed", [0, 42])
 @pytest.mark.parametrize("method", LINEARIZATION_METHODS)
 @pytest.mark.parametrize("test_fun", [jnp.sin, jnp.cos, jnp.exp, jnp.arctan])
-def test_sqrt_vs_std_non_additive(dim_x, seed, method, test_fun):
+def test_sqrt_vs_std_non_additive(dim_x, dim_q, seed, method, test_fun):
     # TODO: use get_system to reduce the number of lines
     np.random.seed(seed)
 
     m_x = np.random.randn(dim_x)
-    m_q = np.random.randn(dim_x)
+    m_q = np.random.randn(dim_q)
 
     chol_x = np.random.rand(dim_x, dim_x)
     chol_x[np.triu_indices(dim_x, 1)] = 0
 
-    chol_q = np.random.rand(dim_x, dim_x)
-    chol_q[np.triu_indices(dim_x, 1)] = 0
+    chol_q = np.random.rand(dim_q, dim_q)
+    chol_q[np.triu_indices(dim_q, 1)] = 0
+
+    F_q = np.random.randn(dim_x, dim_q)
 
     chol_x_mvn = MVNSqrt(m_x, chol_x)
     x = MVNStandard(m_x, chol_x @ chol_x.T)
@@ -188,8 +190,8 @@ def test_sqrt_vs_std_non_additive(dim_x, seed, method, test_fun):
     chol_q_mvn = MVNSqrt(m_q, chol_q)
     q = MVNStandard(m_q, chol_q @ chol_q.T)
 
-    sqrt_function_model = FunctionalModel(lambda x_, q_: test_fun(x_) + q_, chol_q_mvn, False)
-    function_model = FunctionalModel(lambda x_, q_: test_fun(x_) + q_, q, False)
+    sqrt_function_model = FunctionalModel(lambda x_, q_: test_fun(x_) + F_q @ q_, chol_q_mvn, False)
+    function_model = FunctionalModel(lambda x_, q_: test_fun(x_) + F_q @ q_, q, False)
 
     sqrt_F_x, chol_Q_lin, sqrt_remainder = method(sqrt_function_model, chol_x_mvn)
     F_x, Q_lin, remainder = method(function_model, x)

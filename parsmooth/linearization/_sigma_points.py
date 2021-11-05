@@ -24,40 +24,38 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
 
 def linearize_conditional(model, x, get_sigma_points):
     first_and_second_moments = model.first_and_second_moments
+    F_x, x_pts, f_pts, m_f, C_f_pts = linearize_conditional_common(first_and_second_moments, x,
+                                                                   get_sigma_points)
     if isinstance(x, MVNSqrt):
-        F_x, x_pts, f_pts, m_f, chol_f = linearize_conditional_common(first_and_second_moments, x,
-                                                                      get_sigma_points, True)
         m_x, chol_x = x
 
         sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
         sqrt_Phi = tria(sqrt_Phi.T)
 
         chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
+        chol_f = jnp.sum(x_pts.wm[:, None, None] * C_f_pts, 0)
+
         L = tria(jnp.concatenate([chol_L, chol_f], axis=1))
         return F_x, L, m_f - F_x @ m_x
-    F_x, x_pts, f_pts, m_f, cov_f = linearize_conditional_common(first_and_second_moments, x,
-                                                                 get_sigma_points, True)
+
     m_x, cov_x = x
     Phi = _cov(x_pts.wc, f_pts, m_f, f_pts, m_f)
+    cov_f = jnp.sum(x_pts.wm[:, None, None] * C_f_pts, 0)
     L = Phi - F_x @ cov_x @ F_x.T + cov_f
     return F_x, L, m_f - F_x @ m_x
 
 
-def linearize_conditional_common(first_and_second_moments, x, get_sigma_points, sqrt):
+def linearize_conditional_common(first_and_second_moments, x, get_sigma_points):
     x = get_mvnsqrt(x)
     m_x, chol_x = x
     x_pts = get_sigma_points(x)
 
     f_pts, C_pts = jax.vmap(first_and_second_moments)(x_pts.points)
-
     m_f = jnp.dot(x_pts.wm, f_pts)
-    if sqrt:
-        C_f = jnp.sum(x_pts.wc[:, None, None] ** 0.5 * C_pts, 0)
-    else:
-        C_f = jnp.sum(x_pts.wc[:, None, None] * C_pts, 0)
+
     Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
     F_x = cho_solve((chol_x, True), Psi_x).T
-    return F_x, x_pts, f_pts, m_f, C_f
+    return F_x, x_pts, f_pts, m_f, C_pts
 
 
 def linearize_functional(model: FunctionalModel, x, get_sigma_points):
