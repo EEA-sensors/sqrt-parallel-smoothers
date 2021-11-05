@@ -24,9 +24,9 @@ def config():
     jax.config.update("jax_debug_nans", False)
 
 
-@pytest.mark.parametrize("dim_x", [1, 3])
-@pytest.mark.parametrize("dim_y", [2, 3])
-@pytest.mark.parametrize("seed", [0])
+@pytest.mark.parametrize("dim_x", [2])
+@pytest.mark.parametrize("dim_y", [2])
+@pytest.mark.parametrize("seed", [0, 1])
 @pytest.mark.parametrize("linearization", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("jax_seed", [123])
 @pytest.mark.parametrize("parallel", [False, True])
