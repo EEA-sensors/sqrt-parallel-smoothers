@@ -65,7 +65,7 @@ def _standard_associative_params(linearization_method, transition_model, n_k_1, 
     g = m - E @ (F @ m + b)
     L = P - E @ Pp @ E.T
 
-    return g, E, L
+    return g, E, 0.5 * (L + L.T)
 
 
 def _sqrt_associative_params(linearization_method, transition_model, n_k_1, m, chol_P):

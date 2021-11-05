@@ -1,5 +1,5 @@
 from typing import Optional, Callable, Union
-
+from jax.experimental.host_callback import id_print
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlag
@@ -44,7 +44,6 @@ def smoothing(transition_model: Union[FunctionalModel, ConditionalMomentsModel],
 def _standard_smooth(F, Q, b, xf, xs):
     mf, Pf = xf
     ms, Ps = xs
-
     mean_diff = ms - (b + F @ mf)
     S = F @ Pf @ F.T + Q
     cov_diff = Ps - S
@@ -67,7 +66,8 @@ def _sqrt_smooth(F, cholQ, b, xf, xs):
     Phi11 = tria_Phi[:nx, :nx]
     Phi21 = tria_Phi[nx:, :nx]
     Phi22 = tria_Phi[nx:, nx:]
-    gain = jlag.solve_triangular(Phi11, Phi21.T, trans=True, lower=True).T
+#     gain = jlag.solve_triangular(Phi11, Phi21.T, trans=True, lower=True).T
+    gain =  jlag.solve(Phi11.T, Phi21.T).T
 
     mean_diff = ms - (b + F @ mf)
     mean = mf + gain @ mean_diff

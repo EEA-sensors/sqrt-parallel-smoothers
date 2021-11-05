@@ -80,8 +80,8 @@ def test_vs_sequential_filter(dim_x, dim_y, seed, linearization_method):
 
     _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
 
-    m_nominal = np.random.randn(T + 1, dim_x)
-    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T + 1, axis=0)
+    m_nominal = np.random.randn(T, dim_x)
+    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T, axis=0)
     cholP_nominal = P_nominal
     x_nominal_sqrt = MVNSqrt(m_nominal, cholP_nominal)
     x_nominal = MVNStandard(m_nominal, P_nominal)

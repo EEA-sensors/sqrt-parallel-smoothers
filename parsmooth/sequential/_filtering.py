@@ -43,10 +43,11 @@ def filtering(observations: jnp.ndarray,
         return (x, ell + ell_inc), x
 
     predict_traj = none_or_shift(nominal_trajectory, -1)
-    update_traj = none_or_shift(nominal_trajectory, 1)
+    predict_traj = none_or_concat(predict_traj, x0, 1)
+    update_traj = none_or_shift(nominal_trajectory, 0)
 
     (_, ell), xs = jax.lax.scan(body, (x0, 0.), (observations, predict_traj, update_traj))
-    xs = none_or_concat(xs, x0, 1)
+
     if return_loglikelihood:
         return xs, ell
     else:

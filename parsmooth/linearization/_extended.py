@@ -3,7 +3,8 @@ from typing import Any, Tuple, Union
 import jax
 import jax.numpy as jnp
 
-from parsmooth._base import FunctionalModel, ConditionalMomentsModel, MVNSqrt, are_inputs_compatible, MVNStandard
+from parsmooth._base import FunctionalModel, ConditionalMomentsModel, MVNSqrt, are_inputs_compatible, MVNStandard, \
+    FunctionalModelX
 
 
 def linearize(model: Union[FunctionalModel, ConditionalMomentsModel], x: Union[MVNSqrt, MVNStandard]):
@@ -33,6 +34,15 @@ def linearize(model: Union[FunctionalModel, ConditionalMomentsModel], x: Union[M
         if isinstance(x, MVNSqrt):
             return _sqrt_linearize_callable(f, m_x, *q)
         return _standard_linearize_callable(f, m_x, *q)
+
+    if isinstance(model, FunctionalModelX):
+        f, q = model
+        are_inputs_compatible(x, q)
+
+        m_x, _ = x
+        if isinstance(x, MVNSqrt):
+            return _sqrt_linearize_callable_x(f, m_x, *q)
+        return _standard_linearize_callable_x(f, m_x, *q)
 
     else:
         if isinstance(x, MVNSqrt):
@@ -79,3 +89,17 @@ def _standard_linearize_callable(f, x, q, Q):
 def _sqrt_linearize_callable(f, x, q, cholQ):
     res, F_x, F_q = _linearize_callable_common(f, x, q)
     return F_x, F_q @ cholQ, res - F_x @ x
+
+
+def _linearize_callable_common_x(f, x) -> Tuple[Any, Any]:
+    return f(x), jax.jacfwd(f, 0)(x)
+
+
+def _standard_linearize_callable_x(f, x, q, Q):
+    res, F_x = _linearize_callable_common_x(f, x)
+    return F_x, Q, res - F_x @ x
+
+
+def _sqrt_linearize_callable_x(f, x, q, cholQ):
+    res, F_x = _linearize_callable_common_x(f, x)
+    return F_x, cholQ, res - F_x @ x

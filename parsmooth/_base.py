@@ -17,6 +17,11 @@ class FunctionalModel(NamedTuple):
     mvn: Union[MVNSqrt, MVNStandard]
 
 
+class FunctionalModelX(NamedTuple):
+    function: Callable
+    mvn: Union[MVNSqrt, MVNStandard]
+
+
 class ConditionalMomentsModel(NamedTuple):
     conditional_mean: Callable
     conditional_covariance_or_cholesky: Callable

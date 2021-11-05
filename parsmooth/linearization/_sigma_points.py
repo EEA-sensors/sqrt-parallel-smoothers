@@ -3,7 +3,9 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax.experimental.host_callback import id_print
 from jax.scipy.linalg import cho_solve, block_diag
+from jax.scipy.linalg import solve
 
 from parsmooth._base import MVNSqrt, are_inputs_compatible
 from parsmooth._utils import cholesky_update_many, tria
@@ -98,6 +100,42 @@ def _linearize_functional_common(f, x, q, get_sigma_points):
     F_x = cho_solve((chol_x, True), Psi_x).T
     F_q = cho_solve((chol_q, True), Psi_q).T
     return F_x, F_q, xq_pts, f_pts, m_f
+
+
+def linearize_functional_x(f, x, q, get_sigma_points):
+    F_x, x_pts, f_pts, m_f = _linearize_functional_common_x(f, x, get_sigma_points)
+    if isinstance(x, MVNSqrt):
+        m_x, chol_x = x
+        m_q, chol_q = q
+        Phi = _cov(x_pts.wc, f_pts, m_f, f_pts, m_f)
+        sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
+        sqrt_Phi = tria(sqrt_Phi.T)
+        chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
+#         id_print(jnp.linalg.norm(chol_L))
+        chol_L = tria(jnp.concatenate([chol_L, chol_q], axis=1))
+        return F_x, chol_L, m_f - F_x @ m_x
+    m_x, cov_x = x
+    _, cov_q = q
+    Phi = _cov(x_pts.wc, f_pts, m_f, f_pts, m_f)
+    L = Phi - F_x @ cov_x @ F_x.T + cov_q
+
+    return F_x, 0.5 * (L + L.T), m_f - F_x @ m_x
+
+
+def _linearize_functional_common_x(f, x, get_sigma_points):
+    x = get_mvnsqrt(x)
+    m_x, chol_x = x
+
+    x_pts = get_sigma_points(x)
+
+    f_pts = jax.vmap(f)(x_pts.points)
+    m_f = jnp.dot(x_pts.wm, f_pts)
+
+    Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
+#     F_x = solve(chol_x @ chol_x.T, Psi_x,  sym_pos=True).T
+    F_x = cho_solve((chol_x, True), Psi_x).T
+
+    return F_x, x_pts, f_pts, m_f
 
 
 def _concatenate_mvns(x, q):

@@ -13,8 +13,8 @@ def config():
     jax.config.update("jax_debug_nans", False)
 
 
-@pytest.mark.parametrize("dim_x", [1, 2, 3])
-@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("dim_x", [1, 2, 3, 4, 5])
+@pytest.mark.parametrize("seed", [0, 42, 666, 12345])
 def test_standard_vs_sqrt_filtering_operator(dim_x, seed):
     np.random.seed(seed)
     A1 = np.random.randn(dim_x, dim_x)
@@ -50,15 +50,15 @@ def test_standard_vs_sqrt_filtering_operator(dim_x, seed):
     A_sqrt, b_sqrt, U, eta_sqrt, Z = sqrt_filtering_operator((A1, b1, U1, eta1, Z1),
                                                              (A2, b2, U2, eta2, Z2))
 
-    np.testing.assert_allclose(A_std, A_sqrt, atol=1e-6, rtol=1e-6)
-    np.testing.assert_allclose(b_std, b_sqrt, atol=1e-6, rtol=1e-6)
-    np.testing.assert_allclose(eta_std, eta_sqrt, atol=1e-6, rtol=1e-6)
-    np.testing.assert_allclose(C, U @ U.T, atol=1e-6, rtol=1e-6)
-    np.testing.assert_allclose(J, Z @ Z.T, atol=1e-6, rtol=1e-6)
+    np.testing.assert_allclose(A_std, A_sqrt)
+    np.testing.assert_allclose(b_std, b_sqrt)
+    np.testing.assert_allclose(eta_std, eta_sqrt)
+    np.testing.assert_allclose(C, U @ U.T)
+    np.testing.assert_allclose(J, Z @ Z.T)
 
 
-@pytest.mark.parametrize("dim_x", [1, 2, 3])
-@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("dim_x", [1, 2, 3, 4, 5])
+@pytest.mark.parametrize("seed", [0, 42, 666, 12345])
 def test_standard_vs_sqrt_smoothing_operator(dim_x, seed):
     np.random.seed(seed)
 
@@ -83,6 +83,6 @@ def test_standard_vs_sqrt_smoothing_operator(dim_x, seed):
     g_sqrt, E_sqrt, D = sqrt_smoothing_operator((g1, E1, D1),
                                                 (g2, E2, D2))
 
-    np.testing.assert_allclose(g_std, g_sqrt, atol=1e-3, rtol=1e-3)
-    np.testing.assert_allclose(E_std, E_sqrt, atol=1e-3, rtol=1e-3)
-    np.testing.assert_allclose(L, D @ D.T, atol=1e-3, rtol=1e-3)
+    np.testing.assert_allclose(g_std, g_sqrt)
+    np.testing.assert_allclose(E_std, E_sqrt)
+    np.testing.assert_allclose(L, D @ D.T)

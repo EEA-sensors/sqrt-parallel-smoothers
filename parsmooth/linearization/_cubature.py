@@ -3,8 +3,9 @@ from typing import Tuple, Union
 import jax.numpy as jnp
 import numpy as np
 
-from parsmooth._base import MVNStandard, FunctionalModel, ConditionalMomentsModel, MVNSqrt
-from parsmooth.linearization._sigma_points import SigmaPoints, linearize_functional, linearize_conditional
+from parsmooth._base import MVNStandard, FunctionalModel, ConditionalMomentsModel, MVNSqrt, FunctionalModelX
+from parsmooth.linearization._sigma_points import SigmaPoints, linearize_functional, linearize_conditional, \
+    linearize_functional_x
 
 
 def linearize(model: Union[FunctionalModel, ConditionalMomentsModel], x: Union[MVNSqrt, MVNStandard]):
@@ -30,6 +31,9 @@ def linearize(model: Union[FunctionalModel, ConditionalMomentsModel], x: Union[M
     if isinstance(model, FunctionalModel):
         f, q = model
         return linearize_functional(f, x, q, _get_sigma_points)
+    if isinstance(model, FunctionalModelX):
+        f, q = model
+        return linearize_functional_x(f, x, q, _get_sigma_points)
     conditional_mean, conditional_covariance_or_cholesky = model
     return linearize_conditional(conditional_mean, conditional_covariance_or_cholesky, x, _get_sigma_points)
 

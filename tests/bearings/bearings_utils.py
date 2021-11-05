@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jax import lax, jit
 
 
-def _transition_function(x, q, dt):
+def _transition_function(x, dt):
     """ Deterministic transition function used in the state space model
 
     Parameters
@@ -41,10 +41,10 @@ def _transition_function(x, q, dt):
                    [0, 0, coswt, sinwt, 0],
                    [0, 0, -sinwt, coswt, 0],
                    [0, 0, 0, 0, 1]])
-    return F @ x + q
+    return F @ x
 
 
-def _observation_function(x, r, s1, s2):
+def _observation_function(x, s1, s2):
     """
     Returns the observed angles as function of the state and the sensors locations
 
@@ -66,7 +66,7 @@ def _observation_function(x, r, s1, s2):
     """
     temp = jnp.array([jnp.arctan2(x[1] - s1[1], x[0] - s1[0]),
                       jnp.arctan2(x[1] - s2[1], x[0] - s2[0])])
-    return temp + r
+    return temp
 
 
 def make_parameters(qc, qw, r, dt, s1, s2):

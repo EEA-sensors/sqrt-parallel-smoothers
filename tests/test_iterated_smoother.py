@@ -36,8 +36,8 @@ def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
 
     _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
 
-    m_nominal = np.random.randn(T + 1, dim_x)
-    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T + 1, axis=0)
+    m_nominal = np.random.randn(T, dim_x)
+    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T, axis=0)
     cholP_nominal = P_nominal
     x_nominal_sqrt = MVNSqrt(m_nominal, cholP_nominal)
     x_nominal = MVNStandard(m_nominal, P_nominal)
@@ -82,8 +82,8 @@ def test_linear_gradient(dim_x, dim_y, seed, linearization_method, parallel):
 
     _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
 
-    m_nominal = np.random.randn(T + 1, dim_x)
-    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T + 1, axis=0)
+    m_nominal = np.random.randn(T, dim_x)
+    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T, axis=0)
     cholP_nominal = P_nominal
     x_nominal_sqrt = MVNSqrt(m_nominal, cholP_nominal)
     x_nominal = MVNStandard(m_nominal, P_nominal)

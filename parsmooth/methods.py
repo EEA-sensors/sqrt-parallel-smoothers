@@ -1,6 +1,7 @@
 from typing import Callable, Optional, Union
 
 from jax import numpy as jnp
+from jax.experimental.host_callback import id_print
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, ConditionalMomentsModel
 from parsmooth._pathwise_sampler import _par_sampling, _seq_sampling
@@ -44,6 +45,8 @@ def filter_smoother(observations: jnp.ndarray,
                     parallel: bool = True):
     filter_trajectory = filtering(observations, x0, transition_model, observation_model, linearization_method,
                                   nominal_trajectory, parallel)
+#     id_print(filter_trajectory.mean)
+#     id_print(smoothing(transition_model, filter_trajectory, linearization_method, nominal_trajectory, parallel).mean)
     return smoothing(transition_model, filter_trajectory, linearization_method, nominal_trajectory, parallel)
 
 
@@ -73,6 +76,7 @@ def iterated_smoothing(observations: jnp.ndarray,
         _, ell = filtering(observations, x0, transition_model, observation_model, linearization_method,
                            nominal_traj, parallel, return_loglikelihood=True)
         return nominal_traj, ell
+#     id_print(nominal_traj.mean)
     return nominal_traj
 
 
