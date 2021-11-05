@@ -3,9 +3,9 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.scipy.linalg import cho_solve, block_diag
+from jax.scipy.linalg import cho_solve
 
-from parsmooth._base import MVNSqrt, are_inputs_compatible
+from parsmooth._base import MVNSqrt, FunctionalModel, ConditionalMomentsModel
 from parsmooth._utils import cholesky_update_many, tria
 from parsmooth.linearization._common import get_mvnsqrt
 
@@ -22,88 +22,83 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
     return jnp.dot(one, two)
 
 
-def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
-    F_x, x_pts, f_pts, m_f, v_f = linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points)
+def linearize_conditional(model, x, get_sigma_points):
+    first_and_second_moments = model.first_and_second_moments
+    F_x, x_pts, f_pts, m_f, cov_or_chol_f = linearize_conditional_common(first_and_second_moments, x, get_sigma_points)
     if isinstance(x, MVNSqrt):
         m_x, chol_x = x
-        
+
         sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
         sqrt_Phi = tria(sqrt_Phi.T)
-        
+
         chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
-        chol_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
-        
-        chol_f = jnp.sum(x_pts.wc[:, None, None] * chol_pts, 0)
-        
-        L = tria(jnp.concatenate([chol_L, chol_f], axis=1))
+
+        L = tria(jnp.concatenate([chol_L, cov_or_chol_f], axis=1))
         return F_x, L, m_f - F_x @ m_x
 
     m_x, cov_x = x
     Phi = _cov(x_pts.wc, f_pts, m_f, f_pts, m_f)
-    L = Phi - F_x @ cov_x @ F_x.T + v_f
+    L = Phi - F_x @ cov_x @ F_x.T + cov_or_chol_f
     return F_x, L, m_f - F_x @ m_x
 
 
-def linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points):
+def linearize_conditional_common(first_and_second_moments, x, get_sigma_points):
     x = get_mvnsqrt(x)
     m_x, chol_x = x
     x_pts = get_sigma_points(x)
 
-    f_pts = jax.vmap(c_m)(x_pts.points)
-    V_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
-    
+    f_pts, C_pts = jax.vmap(first_and_second_moments)(x_pts.points)
+
     m_f = jnp.dot(x_pts.wm, f_pts)
-    v_f = jnp.sum(x_pts.wc[:, None, None] * V_pts, 0)
-    
+    C_f = jnp.sum(x_pts.wc[:, None, None] * C_pts, 0)
+
     Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
     F_x = cho_solve((chol_x, True), Psi_x).T
-    return F_x, x_pts, f_pts, m_f, v_f
+    return F_x, x_pts, f_pts, m_f, C_f
 
 
-def linearize_functional(f, x, q, get_sigma_points):
-    are_inputs_compatible(x, q)
+def linearize_functional(model: FunctionalModel, x, get_sigma_points):
+    f, q, is_additive = model
+    if is_additive:
+        m_q, chol_or_cov_q = q
 
-    F_x, _, xq_pts, f_pts, m_f = _linearize_functional_common(f, x, q, get_sigma_points)
-    if isinstance(x, MVNSqrt):
-        m_x, chol_x = x
-        sqrt_Phi = jnp.sqrt(xq_pts.wc[:, None]) * (f_pts - m_f[None, :])
+        def first_and_second_order(y):
+            m_f = f(y) + m_q
+            return m_f, chol_or_cov_q
+
+        conditional_moment_model = ConditionalMomentsModel(first_and_second_order)
+    else:
+        conditional_moment_model = _get_conditional_moment_model_from_non_additive(f, q, get_sigma_points)
+
+    return linearize_conditional(conditional_moment_model, x, get_sigma_points)
+
+
+def _get_conditional_moment_model_from_non_additive(f, q, get_sigma_points):
+    def mean_and_cov(x):
+        F_q, wc, f_pts, m_f = _linearize_functional_common(lambda q_: f(x, q_), q, get_sigma_points)
+        cov_f = _cov(wc, f_pts, m_f, f_pts, m_f)
+        return m_f, cov_f
+
+    def mean_and_chol(x):
+        F_q, wc, f_pts, m_f = _linearize_functional_common(lambda q_: f(x, q_), q, get_sigma_points)
+        sqrt_Phi = jnp.sqrt(wc[:, None]) * (f_pts - m_f[None, :])
         sqrt_Phi = tria(sqrt_Phi.T)
-        chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
-        return F_x, chol_L, m_f - F_x @ m_x
-    m_x, cov_x = x
-    Phi = _cov(xq_pts.wc, f_pts, m_f, f_pts, m_f)
-    L = Phi - F_x @ cov_x @ F_x.T
+        return m_f, sqrt_Phi
 
-    return F_x, L, m_f - F_x @ m_x
+    if isinstance(q, MVNSqrt):
+        return ConditionalMomentsModel(mean_and_chol)
+    return ConditionalMomentsModel(mean_and_cov)
 
 
-def _linearize_functional_common(f, x, q, get_sigma_points):
+def _linearize_functional_common(f, x, get_sigma_points):
     x = get_mvnsqrt(x)
-    q = get_mvnsqrt(q)
     m_x, chol_x = x
-    m_q, chol_q = q
-    dim_x = m_x.shape[0]
-    xq = _concatenate_mvns(x, q)
+    x_pts = get_sigma_points(x)
 
-    xq_pts = get_sigma_points(xq)
+    f_pts = jax.vmap(f)(x_pts.points)
+    m_f = jnp.dot(x_pts.wm, f_pts)
 
-    x_pts, q_pts = jnp.split(xq_pts.points, [dim_x], axis=1)
-
-    f_pts = jax.vmap(f)(x_pts, q_pts)
-    m_f = jnp.dot(xq_pts.wm, f_pts)
-
-    Psi_x = _cov(xq_pts.wc, x_pts, m_x, f_pts, m_f)
-    Psi_q = _cov(xq_pts.wc, q_pts, m_q, f_pts, m_f)
+    Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
 
     F_x = cho_solve((chol_x, True), Psi_x).T
-    F_q = cho_solve((chol_q, True), Psi_q).T
-    return F_x, F_q, xq_pts, f_pts, m_f
-
-
-def _concatenate_mvns(x, q):
-    # This code implicitly assumes that X and Q are independent multivariate Gaussians.
-    m_x, chol_x = x
-    m_q, chol_q = q
-    m_xq = jnp.concatenate([m_x, m_q])
-    chol_xq = block_diag(chol_x, chol_q)
-    return MVNSqrt(m_xq, chol_xq)
+    return F_x, x_pts.wc, f_pts, m_f

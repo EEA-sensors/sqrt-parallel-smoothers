@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Union
+from typing import Union
 
 import jax
 import jax.numpy as jnp
@@ -26,56 +26,66 @@ def linearize(model: Union[FunctionalModel, ConditionalMomentsModel], x: Union[M
         Either the cholesky or the full-rank modified covariance matrix.
     """
     if isinstance(model, FunctionalModel):
-        f, q = model
+        f, q, is_additive = model
         are_inputs_compatible(x, q)
 
         m_x, _ = x
         if isinstance(x, MVNSqrt):
-            return _sqrt_linearize_callable(f, m_x, *q)
-        return _standard_linearize_callable(f, m_x, *q)
+            return _sqrt_linearize_callable(f, m_x, *q, is_additive)
+        return _standard_linearize_callable(f, m_x, *q, is_additive)
 
     else:
+        first_and_second_moments = model.first_and_second_moments
         if isinstance(x, MVNSqrt):
-            return _sqrt_linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x)
-        return _standard_linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x)
+            return _sqrt_linearize_conditional(first_and_second_moments, x)
+        return _standard_linearize_conditional(first_and_second_moments, x)
 
 
-def _linearize_conditional_common(c_m, c_cov, x) -> Tuple[Any, Any, Any]:
+def _standard_linearize_conditional(mean_and_cov, x):
     m, p = x
-    d_cm = jax.jacfwd(c_m, 0)
-    return c_m(m), c_cov(m) + d_cm(m) @ p @ d_cm(m).T, d_cm(m) @ p
 
+    # FIXME: When value_and_jac arrives...
+    c_m_val, c_cov_cal, = mean_and_cov(m)
+    F, _ = jax.jacfwd(mean_and_cov)(m)
 
-def _standard_linearize_conditional(c_m, c_cov, x):
-    E_y, Cov_y, Cov_y_x = _linearize_conditional_common(c_m, c_cov, x)
     m, p = x
-    F = jnp.linalg.solve(p.T, Cov_y_x.T).T
-    b = E_y - F @ m
-    Cov = Cov_y - F @ p @ F.T
-    return F, Cov, b
+    b = c_m_val - F @ m
+    return F, c_cov_cal, b
 
 
-def _sqrt_linearize_conditional(c_m, c_chol, x):
+def _sqrt_linearize_conditional(mean_and_chol, x):
     m, _ = x
-    F = jax.jacfwd(c_m, 0)(m)
-    b = c_m(m) - F @ m
-    Chol = c_chol(m)
-    return F, Chol, b
+
+    # FIXME: When value_and_jac arrives...
+    c_m_val, c_chol_val = mean_and_chol(m)
+    F, _ = jax.jacfwd(mean_and_chol)(m)
+
+    b = c_m_val - F @ m
+    return F, c_chol_val, b
 
 
-def _linearize_callable_common(f, x, q) -> Tuple[Any, Any, Any]:
+def _linearize_callable_common(f, x, q, is_additive):
     dim_x = x.shape[0]
     dim_q = q.shape[0]
-    if dim_q > dim_x:
-        return f(x, q), *jax.jacrev(f, (0, 1))(x, q)  # noqa: this really is a 3-tuple.
-    return f(x, q), *jax.jacfwd(f, (0, 1))(x, q)  # noqa: this really is a 3-tuple.
+    if not is_additive:
+        f_val = f(x, q)
+        if dim_q > dim_x:
+            return f_val, *jax.jacrev(f, (0, 1))(x, q)
+        return f_val, *jax.jacfwd(f, (0, 1))(x, q)
+    return f(x) + q, jax.jacfwd(f)(x)
 
 
-def _standard_linearize_callable(f, x, q, Q):
-    res, F_x, F_q = _linearize_callable_common(f, x, q)
-    return F_x, F_q @ Q @ F_q.T, res - F_x @ x
+def _standard_linearize_callable(f, x, m_q, cov_q, is_additive):
+    if is_additive:
+        res, F_x = _linearize_callable_common(f, x, m_q, is_additive)
+        return F_x, cov_q, res - F_x @ x
+    res, F_x, F_q = _linearize_callable_common(f, x, m_q, is_additive)  # noqa
+    return F_x, F_q @ cov_q @ F_q.T, res - F_x @ x
 
 
-def _sqrt_linearize_callable(f, x, q, cholQ):
-    res, F_x, F_q = _linearize_callable_common(f, x, q)
-    return F_x, F_q @ cholQ, res - F_x @ x
+def _sqrt_linearize_callable(f, x, m_q, chol_q, is_additive):
+    if is_additive:
+        res, F_x = _linearize_callable_common(f, x, m_q, is_additive)
+        return F_x, chol_q, res - F_x @ x
+    res, F_x, F_q = _linearize_callable_common(f, x, m_q, is_additive)  # noqa
+    return F_x, F_q @ chol_q, res - F_x @ x

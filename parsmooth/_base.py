@@ -15,11 +15,11 @@ class MVNSqrt(NamedTuple):
 class FunctionalModel(NamedTuple):
     function: Callable
     mvn: Union[MVNSqrt, MVNStandard]
+    is_additive: bool = False
 
 
 class ConditionalMomentsModel(NamedTuple):
-    conditional_mean: Callable
-    conditional_covariance_or_cholesky: Callable
+    first_and_second_moments: Callable
 
 
 def are_inputs_compatible(*y):

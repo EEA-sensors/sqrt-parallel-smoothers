@@ -35,10 +35,8 @@ def linearize(model: Union[FunctionalModel, ConditionalMomentsModel],
     """
     get_sigma_points = lambda mvn: _get_sigma_points(mvn, order)
     if isinstance(model, FunctionalModel):
-        f, q = model
-        return linearize_functional(f, x, q, get_sigma_points)
-    conditional_mean, conditional_covariance_or_cholesky = model
-    return linearize_conditional(conditional_mean, conditional_covariance_or_cholesky, x, get_sigma_points)
+        return linearize_functional(model, x, get_sigma_points)
+    return linearize_conditional(model, x, get_sigma_points)
 
 
 @partial(jax.jit, static_argnums=(1,))
