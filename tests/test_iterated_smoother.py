@@ -13,7 +13,7 @@ from parsmooth.sequential._smoothing import smoothing as seq_smoothing
 from tests._lgssm import transition_function as lgssm_f, observation_function as lgssm_h, get_data
 from tests._test_utils import get_system
 
-LIST_LINEARIZATIONS = [cubature, extended]
+LIST_LINEARIZATIONS = [cubature]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -30,7 +30,7 @@ def config():
 @pytest.mark.parametrize("parallel", [True, False])
 def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
     np.random.seed(seed)
-    T = 5
+    T = 3
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
 

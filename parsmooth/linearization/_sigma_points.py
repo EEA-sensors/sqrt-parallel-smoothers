@@ -3,7 +3,6 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.scipy.linalg import solve
 from jax.scipy.linalg import cho_solve, block_diag
 
 from parsmooth._base import MVNSqrt, are_inputs_compatible
@@ -96,7 +95,7 @@ def _linearize_functional_common(f, x, get_sigma_points):
     m_f = jnp.dot(x_pts.wm, f_pts)
 
     Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
-    F_x = solve(chol_x @ chol_x.T, Psi_x, sym_pos=True).T
+    F_x = cho_solve((chol_x, True), Psi_x).T
 
     return F_x, x_pts, f_pts, m_f
 

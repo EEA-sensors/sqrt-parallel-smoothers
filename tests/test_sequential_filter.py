@@ -189,7 +189,7 @@ def test_filter_infinite_info(dim, seed, sqrt, linearization_method):
 @pytest.mark.parametrize("seed", [0, 42])
 def test_all_filters_agree(dim_x, dim_y, seed):
     np.random.seed(seed)
-    T = 5
+    T = 4
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
     _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
@@ -251,4 +251,4 @@ def test_all_filters_with_nominal_traj(dim_x, dim_y, seed):
         np.testing.assert_allclose(filtered_states_nominal.mean, filtered_states.mean, atol=1e-3)
         np.testing.assert_allclose(filtered_states_nominal.mean, sqrt_filtered_states_nominal.mean, atol=1e-3)
 
-        # np.testing.assert_allclose(sqrt_filtered_states.mean, sqrt_filtered_states_nominal.mean, atol=1e-3)
+        np.testing.assert_allclose(sqrt_filtered_states.mean, sqrt_filtered_states_nominal.mean, atol=1e-3)
