@@ -55,7 +55,7 @@ def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
     seq_smoother_res = seq_smoothing(transition_model, seq_filter_res, linearization_method)
 
     iterated_res = iterated_smoothing(observations, x0, transition_model, observation_model, linearization_method,
-                                      x_nominal, parallel, criterion=lambda i, *_: i < 10)
+                                      x_nominal, parallel, criterion=lambda i, *_: i < 5)
 
     sqrt_iterated_res = iterated_smoothing(observations, chol_x0, sqrt_transition_model, sqrt_observation_model,
                                            linearization_method, x_nominal_sqrt, parallel,

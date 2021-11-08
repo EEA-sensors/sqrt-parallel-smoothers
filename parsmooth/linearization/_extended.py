@@ -63,19 +63,15 @@ def _sqrt_linearize_conditional(c_m, c_chol, x):
     return F, Chol, b
 
 
-def _linearize_callable_common(f, x, q) -> Tuple[Any, Any, Any]:
-    dim_x = x.shape[0]
-    dim_q = q.shape[0]
-    if dim_q > dim_x:
-        return f(x, q), *jax.jacrev(f, (0, 1))(x, q)  # noqa: this really is a 3-tuple.
-    return f(x, q), *jax.jacfwd(f, (0, 1))(x, q)  # noqa: this really is a 3-tuple.
+def _linearize_callable_common(f, x) -> Tuple[Any, Any]:
+    return f(x), jax.jacfwd(f, 0)(x)
 
 
-def _standard_linearize_callable(f, x, q, Q):
-    res, F_x, F_q = _linearize_callable_common(f, x, q)
-    return F_x, F_q @ Q @ F_q.T, res - F_x @ x
+def _standard_linearize_callable(f, x, m_q, Q):
+    res, F_x = _linearize_callable_common(f, x)
+    return F_x, Q, res - F_x @ x + m_q
 
 
-def _sqrt_linearize_callable(f, x, q, cholQ):
-    res, F_x, F_q = _linearize_callable_common(f, x, q)
-    return F_x, F_q @ cholQ, res - F_x @ x
+def _sqrt_linearize_callable(f, x, m_q, cholQ):
+    res, F_x = _linearize_callable_common(f, x)
+    return F_x, cholQ, res - F_x @ x + m_q

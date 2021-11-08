@@ -63,9 +63,16 @@ def test_params(dim_x, dim_y, seed, linearization_method):
 
     for actual, expected in zip(ssm, (F, Q, b, H, R, c)):
         np.testing.assert_allclose(actual, expected, atol=1e-7)
+    np.testing.assert_allclose(sqrt_ssm[0], F, atol=1e-7)
 
-    for actual, expected in zip(sqrt_ssm, (F, cholQ, b, H, cholR, c)):
-        np.testing.assert_allclose(actual, expected, atol=1e-7)
+    np.testing.assert_allclose(sqrt_ssm[2], b, atol=1e-7)
+    np.testing.assert_allclose(sqrt_ssm[3], H, atol=1e-7)
+    np.testing.assert_allclose(sqrt_ssm[5], c, atol=1e-7)
+    np.testing.assert_allclose(sqrt_ssm[1] @ sqrt_ssm[1].T, cholQ @ cholQ.T, atol=1e-7)
+    np.testing.assert_allclose(sqrt_ssm[4] @ sqrt_ssm[4].T, cholR @ cholR.T, atol=1e-7)
+
+    # for actual, expected in zip(sqrt_ssm, (F, cholQ, b, H, cholR, c)):
+    #     np.testing.assert_allclose(actual, expected, atol=1e-7)
 
 
 @pytest.mark.parametrize("dim_x", [1, 2, 3])
@@ -105,14 +112,15 @@ def test_vs_sequential_filter(dim_x, dim_y, seed, linearization_method):
     sqrt_par_filter_res, par_sqrt_ell = par_filtering(observations, chol_x0, sqrt_transition_model,
                                                       sqrt_observation_model, linearization_method, x_nominal_sqrt,
                                                       return_loglikelihood=True)
+    np.testing.assert_array_almost_equal(seq_filter_res.mean, par_filter_res.mean)
+    np.testing.assert_array_almost_equal(seq_filter_res.cov, par_filter_res.cov)
+    np.testing.assert_array_almost_equal(sqrt_par_filter_res.mean, seq_filter_res.mean)
+    np.testing.assert_array_almost_equal(sqrt_par_filter_res.chol @ np.transpose(sqrt_par_filter_res.chol, [0, 2, 1]),
+                                         seq_filter_res.cov)
+    np.testing.assert_array_almost_equal(seq_filter_res.mean, seq_sqrt_filter_res.mean)
 
     assert seq_sqrt_ell == pytest.approx(seq_ell)
     assert par_ell == pytest.approx(seq_ell)
     assert par_sqrt_ell == pytest.approx(seq_ell)
 
-    np.testing.assert_array_almost_equal(seq_filter_res.mean, par_filter_res.mean)
-    np.testing.assert_array_almost_equal(seq_filter_res.mean, seq_sqrt_filter_res.mean)
-    np.testing.assert_array_almost_equal(seq_filter_res.cov, par_filter_res.cov)
-    np.testing.assert_array_almost_equal(sqrt_par_filter_res.mean, seq_filter_res.mean)
-    np.testing.assert_array_almost_equal(sqrt_par_filter_res.chol @ np.transpose(sqrt_par_filter_res.chol, [0, 2, 1]),
-                                         seq_filter_res.cov)
+

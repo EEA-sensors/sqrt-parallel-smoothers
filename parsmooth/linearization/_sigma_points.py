@@ -3,6 +3,7 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax.scipy.linalg import solve
 from jax.scipy.linalg import cho_solve, block_diag
 
 from parsmooth._base import MVNSqrt, are_inputs_compatible
@@ -63,41 +64,41 @@ def linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points):
 def linearize_functional(f, x, q, get_sigma_points):
     are_inputs_compatible(x, q)
 
-    F_x, _, xq_pts, f_pts, m_f = _linearize_functional_common(f, x, q, get_sigma_points)
+    F_x, x_pts, f_pts, m_f = _linearize_functional_common(f, x, get_sigma_points)
     if isinstance(x, MVNSqrt):
         m_x, chol_x = x
-        sqrt_Phi = jnp.sqrt(xq_pts.wc[:, None]) * (f_pts - m_f[None, :])
-        sqrt_Phi = tria(sqrt_Phi.T)
+        m_q, chol_q = q
+        sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
+        dim_w = sqrt_Phi.shape[0]
+        dim = sqrt_Phi.shape[1]
+        if dim_w >= dim:
+            sqrt_Phi = tria(sqrt_Phi.T)
+        else:
+            sqrt_Phi = jnp.concatenate([sqrt_Phi.T, jnp.zeros((dim, dim - dim_w))], axis=1)
         chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
-        return F_x, chol_L, m_f - F_x @ m_x
+        chol_L = tria(jnp.concatenate([chol_L, chol_q], axis=1))
+        return F_x, chol_L, m_f - F_x @ m_x + m_q
     m_x, cov_x = x
-    Phi = _cov(xq_pts.wc, f_pts, m_f, f_pts, m_f)
-    L = Phi - F_x @ cov_x @ F_x.T
+    m_q, cov_q = q
+    Phi = _cov(x_pts.wc, f_pts, m_f, f_pts, m_f)
+    L = Phi - F_x @ cov_x @ F_x.T + cov_q
 
-    return F_x, L, m_f - F_x @ m_x
+    return F_x, 0.5 * (L + L.T), m_f - F_x @ m_x + m_q
 
 
-def _linearize_functional_common(f, x, q, get_sigma_points):
+def _linearize_functional_common(f, x, get_sigma_points):
     x = get_mvnsqrt(x)
-    q = get_mvnsqrt(q)
     m_x, chol_x = x
-    m_q, chol_q = q
-    dim_x = m_x.shape[0]
-    xq = _concatenate_mvns(x, q)
 
-    xq_pts = get_sigma_points(xq)
+    x_pts = get_sigma_points(x)
 
-    x_pts, q_pts = jnp.split(xq_pts.points, [dim_x], axis=1)
+    f_pts = jax.vmap(f)(x_pts.points)
+    m_f = jnp.dot(x_pts.wm, f_pts)
 
-    f_pts = jax.vmap(f)(x_pts, q_pts)
-    m_f = jnp.dot(xq_pts.wm, f_pts)
+    Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
+    F_x = solve(chol_x @ chol_x.T, Psi_x, sym_pos=True).T
 
-    Psi_x = _cov(xq_pts.wc, x_pts, m_x, f_pts, m_f)
-    Psi_q = _cov(xq_pts.wc, q_pts, m_q, f_pts, m_f)
-
-    F_x = cho_solve((chol_x, True), Psi_x).T
-    F_q = cho_solve((chol_q, True), Psi_q).T
-    return F_x, F_q, xq_pts, f_pts, m_f
+    return F_x, x_pts, f_pts, m_f
 
 
 def _concatenate_mvns(x, q):
