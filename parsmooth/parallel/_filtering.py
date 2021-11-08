@@ -47,10 +47,10 @@ def filtering(observations: jnp.ndarray,
 
     if return_loglikelihood:
         if isinstance(x0, MVNSqrt):
-            ells = jax.vmap(_sqrt_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1],
+            ells = jax.vmap(_sqrt_loglikelihood)(*linearized_ssm, filtered_means, filtered_chol_or_cov,
                                                  observations)
         else:
-            ells = jax.vmap(_standard_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1],
+            ells = jax.vmap(_standard_loglikelihood)(*linearized_ssm, filtered_means, filtered_chol_or_cov,
                                                      observations)
         return res, jnp.sum(ells)
     return res

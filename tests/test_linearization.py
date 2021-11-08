@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, ConditionalMomentsModel
+from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, ConditionalMomentsModel, FunctionalModelX
 from parsmooth._utils import tria
 from parsmooth.linearization import extended, cubature, gauss_hermite, unscented
 
@@ -39,6 +39,9 @@ def linear_conditional_chol(_x, b, chol_q):
     else:
         res = tria(b @ chol_q)
     return res
+
+def sine_func(x):
+    return jnp.sin(x)
 
 
 @pytest.mark.parametrize("dim_x", [1, 3])
@@ -129,3 +132,37 @@ def test_linear_conditional(dim_x, dim_q, seed, method, sqrt):
     np.testing.assert_allclose(a, F_x, atol=1e-3)
     np.testing.assert_allclose(expected, actual, atol=1e-7)
     np.testing.assert_allclose(expected_Q, Q_lin, atol=1e-7)
+
+
+@pytest.mark.parametrize("dim_x", [1, 3])
+@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("method", LINEARIZATION_METHODS)
+@pytest.mark.parametrize("test_fun", [jnp.sin, jnp.cos, jnp.exp, jnp.arctan])
+def test_sqrt_vs_std(dim_x, seed, method, test_fun):
+    # TODO: use get_system to reduce the number of lines
+    np.random.seed(seed)
+
+    m_x = np.random.randn(dim_x)
+    m_q = np.random.randn(dim_x)
+
+    chol_x = np.random.rand(dim_x, dim_x)
+    chol_x[np.triu_indices(dim_x, 1)] = 0
+
+    chol_q = np.random.rand(dim_x, dim_x)
+    chol_q[np.triu_indices(dim_x, 1)] = 0
+
+
+    chol_x_mvn = MVNSqrt(m_x, chol_x)
+    x = MVNStandard(m_x, chol_x @ chol_x.T)
+
+    sqrt_function_model = FunctionalModelX(test_fun, chol_x_mvn)
+    function_model = FunctionalModelX(test_fun, x)
+
+    sqrt_F_x, chol_Q_lin, sqrt_remainder = method(sqrt_function_model, MVNSqrt(m_q, chol_q))
+    F_x, Q_lin, remainder = method(function_model, MVNStandard(m_q, chol_q @ chol_q.T))
+
+
+    np.testing.assert_allclose(sqrt_F_x, F_x, atol=1e-10)
+    np.testing.assert_allclose(sqrt_remainder, remainder, atol=1e-10)
+    np.testing.assert_allclose(Q_lin, chol_Q_lin @ chol_Q_lin.T, atol=1e-10)
+
