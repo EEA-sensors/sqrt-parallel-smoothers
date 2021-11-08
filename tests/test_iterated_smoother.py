@@ -13,7 +13,7 @@ from parsmooth.sequential._smoothing import smoothing as seq_smoothing
 from tests._lgssm import transition_function as lgssm_f, observation_function as lgssm_h, get_data
 from tests._test_utils import get_system
 
-LIST_LINEARIZATIONS = [cubature]
+LIST_LINEARIZATIONS = [cubature, extended]
 
 
 @pytest.fixture(scope="session", autouse=True)

@@ -63,16 +63,13 @@ def test_params(dim_x, dim_y, seed, linearization_method):
 
     for actual, expected in zip(ssm, (F, Q, b, H, R, c)):
         np.testing.assert_allclose(actual, expected, atol=1e-7)
-    np.testing.assert_allclose(sqrt_ssm[0], F, atol=1e-7)
 
+    np.testing.assert_allclose(sqrt_ssm[0], F, atol=1e-7)
+    np.testing.assert_allclose(sqrt_ssm[1] @ sqrt_ssm[1].T, cholQ @ cholQ.T, atol=1e-7)
     np.testing.assert_allclose(sqrt_ssm[2], b, atol=1e-7)
     np.testing.assert_allclose(sqrt_ssm[3], H, atol=1e-7)
     np.testing.assert_allclose(sqrt_ssm[5], c, atol=1e-7)
-    np.testing.assert_allclose(sqrt_ssm[1] @ sqrt_ssm[1].T, cholQ @ cholQ.T, atol=1e-7)
     np.testing.assert_allclose(sqrt_ssm[4] @ sqrt_ssm[4].T, cholR @ cholR.T, atol=1e-7)
-
-    # for actual, expected in zip(sqrt_ssm, (F, cholQ, b, H, cholR, c)):
-    #     np.testing.assert_allclose(actual, expected, atol=1e-7)
 
 
 @pytest.mark.parametrize("dim_x", [1, 2, 3])

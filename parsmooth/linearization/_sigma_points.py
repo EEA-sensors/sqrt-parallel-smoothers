@@ -3,6 +3,7 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
+from jax.experimental.host_callback import id_print
 from jax.scipy.linalg import cho_solve, block_diag
 
 from parsmooth._base import MVNSqrt, are_inputs_compatible
