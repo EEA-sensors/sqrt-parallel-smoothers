@@ -35,9 +35,6 @@ def _set_triu(x, val):
 
 
 def _cholesky_update(chol, update_vector, multiplier=1.):
-    # FIXME: This is fixed by the PR https://github.com/tensorflow/probability/pull/1423/files.
-    #        Will be deleted once it is fixed by Tensorflow Probability
-
     chol_diag = jnp.diag(chol)
 
     # The algorithm in [1] is implemented as a double for loop. We can treat
@@ -80,6 +77,30 @@ def _cholesky_update(chol, update_vector, multiplier=1.):
     new_chol = _set_triu(new_chol, 0.)
     new_chol = jnp.where(jnp.isfinite(new_chol), new_chol, 0.)
     return new_chol
+
+
+#
+# @partial(jax.custom_jvp, nondiff_argnums=(2,))
+# def _cholesky_update(chol, update_vector, multiplier=1.):
+#     return __cholesky_update(chol, update_vector, multiplier)
+#
+#
+# @_cholesky_update.defjvp
+# def _cholesky_update_jvp(multiplier, primals, tangents):
+#     chol, update_vector = primals
+#     chol_dot, update_vector_dot = tangents
+#     result = __cholesky_update(chol, update_vector, multiplier)
+#
+#     temp_1 = chol_dot @ chol.T + chol @ chol_dot.T
+#     temp_2 = jnp.outer(update_vector, update_vector_dot) + jnp.outer(update_vector_dot, update_vector)
+#     from jax.experimental.host_callback import id_print
+#     id_print(result, what="res")
+#     id_print(temp_1, what="temp_1")
+#     id_print(temp_2, what="temp_2")
+#     out_dot = jlinalg.solve_triangular(result, temp_1, lower=True)
+#     out_dot = out_dot + jlinalg.solve_triangular(result, multiplier * temp_2, lower=True)
+#
+#     return result, 0.5 * out_dot
 
 
 def none_or_shift(x, shift):

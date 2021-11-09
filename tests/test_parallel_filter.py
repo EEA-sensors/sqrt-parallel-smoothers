@@ -1,7 +1,6 @@
 from functools import partial
 
 import jax
-import jax.numpy as jnp
 import numpy as np
 import pytest
 
@@ -71,76 +70,6 @@ def test_params(dim_x, dim_y, seed, linearization_method):
     np.testing.assert_allclose(sqrt_ssm[3], H, atol=1e-7)
     np.testing.assert_allclose(sqrt_ssm[5], c, atol=1e-7)
     np.testing.assert_allclose(sqrt_ssm[4] @ sqrt_ssm[4].T, cholR @ cholR.T, atol=1e-7)
-
-
-@pytest.mark.parametrize("dim_x", [1, 2, 3])
-@pytest.mark.parametrize("seed", [0, 42])
-@pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
-@pytest.mark.parametrize("test_tran_fun", [jnp.sin, jnp.cos, jnp.exp, jnp.arctan])
-@pytest.mark.parametrize("test_obs_fun", [jnp.sin, jnp.cos, jnp.exp, jnp.arctan])
-def test_params_nonlinear(dim_x, test_tran_fun, test_obs_fun, seed, linearization_method):
-    np.random.seed(seed)
-
-    m0 = np.random.randn(dim_x)
-    chol0 = np.random.rand(dim_x, dim_x)
-    chol0[np.triu_indices(dim_x, 1)] = 0
-    x0 = MVNStandard(m0, chol0 @ chol0.T)
-    chol_x0 = MVNSqrt(m0, chol0)
-
-    x1 = np.random.randn(dim_x)
-    cholx1 = np.random.rand(dim_x, dim_x)
-    cholx1[np.triu_indices(dim_x, 1)] = 0
-    x_nominal_sqrt1 = MVNSqrt(x1, cholx1)
-    x_nominal_std1 = MVNStandard(x1, cholx1 @ cholx1.T)
-
-    x2 = np.random.randn(dim_x)
-    cholx2 = np.random.rand(dim_x, dim_x)
-    cholx2[np.triu_indices(dim_x, 1)] = 0
-    x_nominal_sqrt2 = MVNSqrt(x2, cholx2)
-    x_nominal_std2 = MVNStandard(x2, cholx2 @ cholx2.T)
-
-    x3 = np.random.randn(dim_x)
-    cholx3 = np.random.rand(dim_x, dim_x)
-    cholx3[np.triu_indices(dim_x, 1)] = 0
-    x_tran_sqrt = MVNSqrt(x3, cholx3)
-    x_tran_std = MVNStandard(x3, cholx3 @ cholx3.T)
-
-    x4 = np.random.randn(dim_x)
-    cholx4 = np.random.rand(dim_x, dim_x)
-    cholx4[np.triu_indices(dim_x, 1)] = 0
-    x_obs_sqrt = MVNSqrt(x4, cholx4)
-    x_obs_std = MVNStandard(x4, cholx4 @ cholx4.T)
-    y = np.random.randn()
-
-    sqrt_transition_model = FunctionalModel(test_tran_fun, x_tran_sqrt)
-    transition_model = FunctionalModel(test_tran_fun, x_tran_std)
-
-    sqrt_observation_model = FunctionalModel(test_obs_fun, x_obs_sqrt)
-    observation_model = FunctionalModel(test_obs_fun, x_obs_std)
-
-    (A_std, b_std, C, eta_std, J), ssm = _standard_associative_params_one(linearization_method,
-                                                                          transition_model,
-                                                                          observation_model,
-                                                                          x_nominal_std1,
-                                                                          x_nominal_std2,
-                                                                          x0.mean,
-                                                                          x0.cov,
-                                                                          y)
-
-    (A_sqrt, b_sqrt, U, eta_sqrt, Z), sqrt_ssm = _sqrt_associative_params_one(linearization_method,
-                                                                              sqrt_transition_model,
-                                                                              sqrt_observation_model,
-                                                                              x_nominal_sqrt1,
-                                                                              x_nominal_sqrt2,
-                                                                              chol_x0.mean,
-                                                                              chol_x0.chol,
-                                                                              y)
-
-    np.testing.assert_allclose(A_std, A_sqrt, atol=1e-7)
-    np.testing.assert_allclose(b_std, b_sqrt, atol=1e-7)
-    np.testing.assert_allclose(eta_std, eta_sqrt, atol=1e-7)
-    np.testing.assert_allclose(C, U @ U.T, atol=1e-7)
-    np.testing.assert_allclose(J, Z @ Z.T, atol=1e-7)
 
 
 @pytest.mark.parametrize("dim_x", [1, 2, 3])
