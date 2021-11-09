@@ -2,7 +2,7 @@ import jax.numpy as jnp
 import numpy as np
 
 
-def transition_function(x, q, A):
+def transition_function(x, A):
     """ Deterministic transition function used in the state space model
     Parameters
     ----------
@@ -17,10 +17,10 @@ def transition_function(x, q, A):
     out: array_like
         The transitioned state
     """
-    return jnp.dot(A, x) + q
+    return jnp.dot(A, x)
 
 
-def observation_function(x, r, H):
+def observation_function(x, H):
     """
     Returns the observed angles as function of the state and the sensors locations
     Parameters
@@ -36,7 +36,7 @@ def observation_function(x, r, H):
     y: array_like
         The observed data
     """
-    return jnp.dot(H, x) + r
+    return jnp.dot(H, x)
 
 
 def get_data(x0, A, H, R, Q, b, c, T, random_state=None, chol_R=None):

@@ -18,6 +18,7 @@ LIST_LINEARIZATIONS = [cubature, extended]
 @pytest.fixture(scope="session", autouse=True)
 def config():
     jax.config.update("jax_enable_x64", True)
+    jax.config.update("jax_platform_name", "cpu")
     jax.config.update('jax_disable_jit', False)
     jax.config.update("jax_debug_nans", False)
 

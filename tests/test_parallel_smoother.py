@@ -60,7 +60,7 @@ def test_params_standard_vs_sqrt(dim_x, dim_y, seed, linearization_method):
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 def test_vs_sequential_smoother(dim_x, dim_y, seed, linearization_method):
     np.random.seed(seed)
-    T = 15
+    T = 10
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
 
