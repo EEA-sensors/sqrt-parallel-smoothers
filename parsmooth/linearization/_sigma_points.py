@@ -69,12 +69,11 @@ def linearize_functional(f, x, q, get_sigma_points):
         m_x, chol_x = x
         m_q, chol_q = q
         sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
-        dim_w = sqrt_Phi.shape[0]
-        dim = sqrt_Phi.shape[1]
-        if dim_w >= dim:
+        n_sigma_points, dim_out = sqrt_Phi.shape
+        if n_sigma_points >= dim_out:
             sqrt_Phi = tria(sqrt_Phi.T)
         else:
-            sqrt_Phi = jnp.concatenate([sqrt_Phi.T, jnp.zeros((dim, dim - dim_w))], axis=1)
+            sqrt_Phi = jnp.concatenate([sqrt_Phi.T, jnp.zeros((dim_out, dim_out - n_sigma_points))], axis=1)
         chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
         chol_L = tria(jnp.concatenate([chol_L, chol_q], axis=1))
         return F_x, chol_L, m_f - F_x @ m_x + m_q
