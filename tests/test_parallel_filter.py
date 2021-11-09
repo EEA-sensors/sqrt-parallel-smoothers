@@ -116,8 +116,8 @@ def test_vs_sequential_filter(dim_x, dim_y, seed, linearization_method):
                                          seq_filter_res.cov)
     np.testing.assert_array_almost_equal(seq_filter_res.mean, seq_sqrt_filter_res.mean)
 
-    # assert seq_sqrt_ell == pytest.approx(seq_ell)
-    # assert par_ell == pytest.approx(seq_ell)
-    # assert par_sqrt_ell == pytest.approx(seq_ell)
+    assert seq_sqrt_ell == pytest.approx(seq_ell)
+    assert par_ell == pytest.approx(seq_ell)
+    assert par_sqrt_ell == pytest.approx(seq_ell)
 
 
