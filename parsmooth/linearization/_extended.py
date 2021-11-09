@@ -67,11 +67,11 @@ def _linearize_callable_common(f, x) -> Tuple[Any, Any]:
     return f(x), jax.jacfwd(f, 0)(x)
 
 
-def _standard_linearize_callable(f, x, m_q, Q):
+def _standard_linearize_callable(f, x, m_q, cov_q):
     res, F_x = _linearize_callable_common(f, x)
-    return F_x, Q, res - F_x @ x + m_q
+    return F_x, cov_q, res - F_x @ x + m_q
 
 
-def _sqrt_linearize_callable(f, x, m_q, cholQ):
+def _sqrt_linearize_callable(f, x, m_q, chol_q):
     res, F_x = _linearize_callable_common(f, x)
-    return F_x, cholQ, res - F_x @ x + m_q
+    return F_x, chol_q, res - F_x @ x + m_q
