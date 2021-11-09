@@ -67,7 +67,8 @@ def _sqrt_smooth(F, cholQ, b, xf, xs):
     Phi11 = tria_Phi[:nx, :nx]
     Phi21 = tria_Phi[nx:, :nx]
     Phi22 = tria_Phi[nx:, nx:]
-    gain = jlag.solve_triangular(Phi11, Phi21.T, trans=True, lower=True).T
+    # gain = jlag.solve_triangular(Phi11, Phi21.T, trans=True, lower=True).T
+    gain = jlag.solve(Phi11.T, Phi21.T).T
 
     mean_diff = ms - (b + F @ mf)
     mean = mf + gain @ mean_diff

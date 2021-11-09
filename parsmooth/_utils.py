@@ -82,7 +82,7 @@ def _cholesky_update(chol, update_vector, multiplier=1.):
 def none_or_shift(x, shift):
     if x is None:
         return None
-    if shift > 0:
+    if shift >= 0:
         return jax.tree_map(lambda z: z[shift:], x)
     return jax.tree_map(lambda z: z[:shift], x)
 

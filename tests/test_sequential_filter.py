@@ -12,7 +12,7 @@ from parsmooth.sequential._filtering import _sqrt_predict, _standard_predict, _s
 from tests._lgssm import get_data, transition_function as lgssm_f, observation_function as lgssm_h
 from tests._test_utils import get_system
 
-LIST_LINEARIZATIONS = [cubature]
+LIST_LINEARIZATIONS = [cubature, extended]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -143,9 +143,9 @@ def test_filter_no_info(dim_x, dim_y, seed, sqrt, linearization_method):
         observation_model = FunctionalModel(partial(lgssm_h, H=H), MVNStandard(c, R))
 
     fun = lambda x: F @ x + b
-    expected_mean = [x0.mean]
+    expected_mean = [fun(x0.mean)]
 
-    for t in range(T):
+    for t in range(1, T):
         expected_mean.append(fun(expected_mean[-1]))
 
     filtered_states = filtering(observations, x0, transition_model, observation_model, linearization_method, None)
@@ -181,7 +181,7 @@ def test_filter_infinite_info(dim, seed, sqrt, linearization_method):
     expected_mean = np.stack([y - c for y in observations], axis=0)
 
     filtered_states = filtering(observations, x0, transition_model, observation_model, linearization_method, None)
-    np.testing.assert_allclose(filtered_states.mean[1:], expected_mean, atol=1e-3, rtol=1e-3)
+    np.testing.assert_allclose(filtered_states.mean, expected_mean, atol=1e-3, rtol=1e-3)
 
 
 @pytest.mark.parametrize("dim_x", [1, 3])
@@ -220,8 +220,8 @@ def test_all_filters_agree(dim_x, dim_y, seed):
 def test_all_filters_with_nominal_traj(dim_x, dim_y, seed):
     np.random.seed(seed)
     T = 5
-    m_nominal = np.random.randn(T + 1, dim_x)
-    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T + 1, axis=0)
+    m_nominal = np.random.randn(T, dim_x)
+    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T, axis=0)
     cholP_nominal = P_nominal
 
     x_nominal = MVNStandard(m_nominal, P_nominal)

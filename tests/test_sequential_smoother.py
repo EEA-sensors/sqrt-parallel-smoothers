@@ -159,8 +159,8 @@ def test_all_smoothers_agree(dim_x, dim_y, seed):
 def test_all_smoothers_with_nominal_traj(dim_x, dim_y, seed):
     np.random.seed(seed)
     T = 5
-    m_nominal = np.random.randn(T + 1, dim_x)
-    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T + 1, axis=0)
+    m_nominal = np.random.randn(T, dim_x)
+    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T, axis=0)
     cholP_nominal = P_nominal
 
     x_nominal = MVNStandard(m_nominal, P_nominal)

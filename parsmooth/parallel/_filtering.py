@@ -22,8 +22,8 @@ def filtering(observations: jnp.ndarray,
         are_inputs_compatible(x0, nominal_trajectory)
 
     else:
-        nominal_mean = jnp.zeros_like(m0, shape=(T + 1,) + m0.shape)
-        nominal_cov_or_chol = jnp.repeat(jnp.eye(m0.shape[-1])[None, ...], T + 1, 0)
+        nominal_mean = jnp.zeros_like(m0, shape=(T,) + m0.shape)
+        nominal_cov_or_chol = jnp.repeat(jnp.eye(m0.shape[-1])[None, ...], T, 0)
         nominal_trajectory = type(x0)(nominal_mean, nominal_cov_or_chol)  # this is kind of a hack but I've seen worse.
 
     if isinstance(x0, MVNSqrt):
@@ -33,16 +33,12 @@ def filtering(observations: jnp.ndarray,
         _, filtered_means, filtered_chol_or_cov, _, _ = jax.lax.associative_scan(jax.vmap(sqrt_filtering_operator),
                                                                                  associative_params)
 
-
     else:
         associative_params, linearized_ssm = _standard_associative_params(linearization_method, transition_model,
                                                                           observation_model,
                                                                           nominal_trajectory, x0, observations)
         _, filtered_means, filtered_chol_or_cov, _, _ = jax.lax.associative_scan(jax.vmap(standard_filtering_operator),
                                                                                  associative_params)
-
-    filtered_means = none_or_concat(filtered_means, m0, position=1)
-    filtered_chol_or_cov = none_or_concat(filtered_chol_or_cov, chol_or_cov_0, position=1)
 
     if isinstance(x0, MVNSqrt):
         res = jax.vmap(MVNSqrt)(filtered_means, filtered_chol_or_cov)
@@ -51,10 +47,10 @@ def filtering(observations: jnp.ndarray,
 
     if return_loglikelihood:
         if isinstance(x0, MVNSqrt):
-            ells = jax.vmap(_sqrt_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1],
+            ells = jax.vmap(_sqrt_loglikelihood)(*linearized_ssm, filtered_means, filtered_chol_or_cov,
                                                  observations)
         else:
-            ells = jax.vmap(_standard_loglikelihood)(*linearized_ssm, filtered_means[:-1], filtered_chol_or_cov[:-1],
+            ells = jax.vmap(_standard_loglikelihood)(*linearized_ssm, filtered_means, filtered_chol_or_cov,
                                                      observations)
         return res, jnp.sum(ells)
     return res
@@ -64,7 +60,8 @@ def _standard_associative_params(linearization_method, transition_model, observa
                                  nominal_trajectory, x0, ys):
     T = ys.shape[0]
     n_k_1 = jax.tree_map(lambda z: z[:-1], nominal_trajectory)
-    n_k = jax.tree_map(lambda z: z[1:], nominal_trajectory)
+    n_k_1 = none_or_concat(n_k_1, x0, 1)
+    n_k = nominal_trajectory
 
     m0, P0 = x0
     ms = jnp.concatenate([m0[None, ...], jnp.zeros_like(m0, shape=(T - 1,) + m0.shape)])
@@ -100,7 +97,8 @@ def _sqrt_associative_params(linearization_method, transition_model, observation
                              nominal_trajectory, x0, ys):
     T = ys.shape[0]
     n_k_1 = jax.tree_map(lambda z: z[:-1], nominal_trajectory)
-    n_k = jax.tree_map(lambda z: z[1:], nominal_trajectory)
+    n_k_1 = none_or_concat(n_k_1, x0, 1)
+    n_k = nominal_trajectory
 
     m0, L0 = x0
     ms = jnp.concatenate([m0[None, ...], jnp.zeros_like(m0, shape=(T - 1,) + m0.shape)])
