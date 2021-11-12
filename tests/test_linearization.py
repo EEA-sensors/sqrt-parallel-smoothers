@@ -41,6 +41,30 @@ def linear_conditional_chol(_x, b, chol_q):
     return res
 
 
+def transition_mean(x):
+    return jnp.log(44.7) + x - jnp.exp(x)
+
+
+def transition_cov(_x):
+    return jnp.array([[0.3**2]])
+
+
+def transition_chol(_x):
+    return jnp.array([[jnp.sqrt(0.3 ** 2)]])
+
+
+def observation_mean(x, lam):
+    return lam * jnp.exp(x)
+
+
+def observation_cov(x, lam):
+    return (lam * jnp.exp(x)).reshape(1, 1)
+
+
+def observation_chol(x, lam):
+    return (jnp.sqrt(lam * jnp.exp(x))).reshape(1, 1)
+
+
 @pytest.mark.parametrize("dim_x", [1, 3])
 @pytest.mark.parametrize("seed", [0, 42])
 @pytest.mark.parametrize("method", LINEARIZATION_METHODS)
@@ -156,3 +180,57 @@ def test_sqrt_vs_std(dim_x, seed, method, test_fun):
     np.testing.assert_allclose(sqrt_F_x, F_x, atol=1e-10)
     np.testing.assert_allclose(sqrt_remainder, remainder, atol=1e-10)
     np.testing.assert_allclose(Q_lin, chol_Q_lin @ chol_Q_lin.T, atol=1e-10)
+
+
+@pytest.mark.parametrize("dim_x", [1])
+@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("method", LINEARIZATION_METHODS)
+def test_sqrt_vs_std_conditional_transition(dim_x, seed, method):
+    np.random.seed(seed)
+
+    m_x = np.random.randn(dim_x)
+    chol_x = np.random.rand(dim_x, dim_x)
+
+    chol_x_mvn = MVNSqrt(m_x, chol_x)
+    x_mvn = MVNStandard(m_x, chol_x @ chol_x.T)
+
+    mean_f = partial(transition_mean)
+    cov_f = partial(transition_cov)
+    chol_f = partial(transition_chol)
+
+    sqrt_moments_model = ConditionalMomentsModel(mean_f, chol_f)
+    moments_model = ConditionalMomentsModel(mean_f, cov_f)
+
+    sqrt_F_x, chol_Q_lin, sqrt_remainder = method(sqrt_moments_model, chol_x_mvn)
+    F_x, Q_lin, remainder = method(moments_model, x_mvn)
+
+    np.testing.assert_allclose(sqrt_F_x, F_x, atol=1e-10)
+    np.testing.assert_allclose(sqrt_remainder, remainder, atol=1e-10)
+    np.testing.assert_allclose(Q_lin, chol_Q_lin @ chol_Q_lin.T, atol=1e-10)
+
+
+@pytest.mark.parametrize("dim_x", [1])
+@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("method", LINEARIZATION_METHODS)
+def test_sqrt_vs_std_conditional_observation(dim_x, seed, method):
+    np.random.seed(seed)
+
+    m_x = np.random.randn(dim_x)
+    chol_x = np.random.rand(dim_x, dim_x)
+
+    chol_x_mvn = MVNSqrt(m_x, chol_x)
+    x_mvn = MVNStandard(m_x, chol_x @ chol_x.T)
+
+    mean_h = partial(observation_mean, lam=10)
+    cov_h = partial(observation_cov, lam=10)
+    chol_h = partial(observation_chol, lam=10)
+
+    sqrt_moments_model = ConditionalMomentsModel(mean_h, chol_h)
+    moments_model = ConditionalMomentsModel(mean_h, cov_h)
+
+    sqrt_F_x, chol_Q_lin, sqrt_remainder = method(sqrt_moments_model, chol_x_mvn)
+    F_x, Q_lin, remainder = method(moments_model, x_mvn)
+
+    np.testing.assert_allclose(sqrt_F_x, F_x, atol=1e-10)
+    np.testing.assert_allclose(sqrt_remainder, remainder, atol=1e-10)
+    np.testing.assert_allclose(Q_lin, chol_Q_lin**2, atol=1e-10)
