@@ -3,7 +3,7 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.scipy.linalg import cho_solve, block_diag
+from jax.scipy.linalg import cho_solve, block_diag, cholesky
 
 from parsmooth._base import MVNSqrt, are_inputs_compatible
 from parsmooth._utils import cholesky_update_many, tria
@@ -71,8 +71,9 @@ def linearize_functional(f, x, q, get_sigma_points):
             sqrt_Phi = tria(sqrt_Phi.T)
         else:
             sqrt_Phi = jnp.concatenate([sqrt_Phi.T, jnp.zeros((dim_out, dim_out - n_sigma_points))], axis=1)
-        chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
-        chol_L = tria(jnp.concatenate([chol_L, chol_q], axis=1))
+        
+        chol_L = tria(jnp.concatenate([sqrt_Phi, chol_q], axis=1))
+        chol_L = cholesky_update_many(chol_L, (F_x @ chol_x).T, -1.)
         return F_x, chol_L, m_f - F_x @ m_x + m_q
     m_x, cov_x = x
     m_q, cov_q = q
