@@ -3,7 +3,6 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.experimental.host_callback import id_print
 from jax.scipy.linalg import cho_solve, block_diag
 
 from parsmooth._base import MVNSqrt, are_inputs_compatible
@@ -24,41 +23,39 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
 
 
 def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
-    F_x, x_pts, f_pts, m_f, v_f = linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points)
-    if isinstance(x, MVNSqrt):
-        m_x, chol_x = x
-        
-        sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
-        sqrt_Phi = tria(sqrt_Phi.T)
-        
-        chol_L = cholesky_update_many(sqrt_Phi, (F_x @ chol_x).T, -1.)
-        chol_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
-        
-        chol_f = jnp.sum(x_pts.wc[:, None, None] * chol_pts, 0)
-        
-        L = tria(jnp.concatenate([chol_L, chol_f], axis=1))
-        return F_x, L, m_f - F_x @ m_x
-
-    m_x, cov_x = x
-    Phi = _cov(x_pts.wc, f_pts, m_f, f_pts, m_f)
-    L = Phi - F_x @ cov_x @ F_x.T + v_f
-    return F_x, L, m_f - F_x @ m_x
-
-
-def linearize_conditional_common(c_m, c_cov_or_chol, x, get_sigma_points):
-    x = get_mvnsqrt(x)
-    m_x, chol_x = x
-    x_pts = get_sigma_points(x)
+    x_sqrt = get_mvnsqrt(x)
+    m_x, chol_x = x_sqrt
+    x_pts = get_sigma_points(x_sqrt)
 
     f_pts = jax.vmap(c_m)(x_pts.points)
-    V_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
-    
     m_f = jnp.dot(x_pts.wm, f_pts)
-    v_f = jnp.sum(x_pts.wc[:, None, None] * V_pts, 0)
-    
+
     Psi_x = _cov(x_pts.wc, x_pts.points, m_x, f_pts, m_f)
     F_x = cho_solve((chol_x, True), Psi_x).T
-    return F_x, x_pts, f_pts, m_f, v_f
+
+    if isinstance(x, MVNSqrt):        
+        sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
+        sqrt_Phi = tria(sqrt_Phi.T)
+
+        chol_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
+
+        temp = jnp.sqrt(x_pts.wc[:, None, None]) * chol_pts
+        # concatenate the blocks properly, it's a bit urk, but what can you do...
+        temp = jnp.transpose(temp, [1, 0, 2]).reshape(temp.shape[1], -1)  
+
+        chol_L = tria(jnp.concatenate([sqrt_Phi, temp], axis=1))
+        chol_L = cholesky_update_many(chol_L, (F_x @ chol_x).T, -1.)
+
+        return F_x, chol_L, m_f - F_x @ m_x
+
+    V_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
+    v_f = jnp.sum(x_pts.wc[:, None, None] * V_pts, 0)
+
+    Phi = _cov(x_pts.wc, f_pts, m_f, f_pts, m_f)
+    temp = F_x @ chol_x
+    L = Phi - temp @ temp.T + v_f
+
+    return F_x, L, m_f - F_x @ m_x
 
 
 def linearize_functional(f, x, q, get_sigma_points):
