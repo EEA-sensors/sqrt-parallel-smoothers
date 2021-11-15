@@ -31,11 +31,10 @@ def linear_conditional_cov(_x, b, cov_q):
 
 
 def linear_conditional_chol(_x, b, chol_q):
-    nx, ny = b.shape
-
-    if nx > ny:
+    ny, nq = b.shape
+    if ny > nq:
         res = jnp.concatenate([b @ chol_q,
-                               jnp.zeros((nx, nx - ny))], axis=1)
+                               jnp.zeros((ny, ny - nq))], axis=1)
     else:
         res = tria(b @ chol_q)
     return res
