@@ -158,7 +158,7 @@ def mvn_loglikelihood(x, chol_cov):
     return -0.5 * norm_y - normalizing_constant
 
 
-# @jax.custom_jvp
+@jax.custom_jvp
 def qr(A: jnp.ndarray):
     """The JAX provided implementation is not parallelizable using VMAP. As a consequence, we have to rewrite it..."""
     return _qr(A)
@@ -168,7 +168,7 @@ def qr(A: jnp.ndarray):
 def _qr(A: jnp.ndarray, return_q=False):
     m, n = A.shape
     min_ = min(m, n)
-    Q = jnp.eye(m, n)
+    Q = jnp.eye(m)
     for j in range(min_):
         # Apply Householder transformation.
         v, tau = _householder(A[j:, j])
@@ -179,10 +179,11 @@ def _qr(A: jnp.ndarray, return_q=False):
         A = H @ A
         Q = H @ Q
 
+    R = jnp.triu(A[:min_, :min_])
     if return_q:
-        return Q[:n].T, jnp.triu(A[:n])
+        return Q[:n].T, R
     else:
-        return jnp.triu(A[:n])
+        return R
 
 
 def _householder(a):
@@ -191,19 +192,23 @@ def _householder(a):
     tau = 2. / jnp.sum(v ** 2)
     return v, tau
 
-# def qr_jvp_rule(primals, tangents):
-#     x, = primals
-#     dx, = tangents
-#     q, r = _qr(x, True)
-#     m, n = x.shape
-#     dx_rinv = jlinalg.solve_triangular(r, dx.T).T
-#     qt_dx_rinv = jnp.matmul(q.T, dx_rinv)
-#     qt_dx_rinv_lower = jnp.tril(qt_dx_rinv, -1)
-#     do = qt_dx_rinv_lower - qt_dx_rinv_lower.T  # This is skew-symmetric
-#     # The following correction is necessary for complex inputs
-#     do = do + jnp.eye(n, dtype=do.dtype) * (qt_dx_rinv - jnp.real(qt_dx_rinv))
-#     dr = jnp.matmul(qt_dx_rinv - do, r)
-#     return (r,), (dr,)
+
+def qr_jvp_rule(primals, tangents):
+    x, = primals
+    dx, = tangents
+    q, r = _qr(x, True)
+    m, n = x.shape
+    min_ = min(m, n)
+    if m < n:
+        dx = dx[:, :m]
+    dx_rinv = jax.lax.linalg.triangular_solve(r, dx)
+    qt_dx_rinv = jnp.matmul(q.T, dx_rinv)
+    qt_dx_rinv_lower = jnp.tril(qt_dx_rinv, -1)
+    do = qt_dx_rinv_lower - qt_dx_rinv_lower.T  # This is skew-symmetric
+    # The following correction is necessary for complex inputs
+    do = do + jnp.eye(min_, dtype=do.dtype) * (qt_dx_rinv - jnp.real(qt_dx_rinv))
+    dr = jnp.matmul(qt_dx_rinv - do, r)
+    return r, dr
 
 
-# qr.defjvp(qr_jvp_rule)
+qr.defjvp(qr_jvp_rule)

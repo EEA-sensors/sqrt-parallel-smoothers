@@ -1,7 +1,6 @@
 from functools import partial
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as linalg
 from jax import lax, jit

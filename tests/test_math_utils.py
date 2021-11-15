@@ -62,10 +62,10 @@ def test_qr(seed):
     B = np.random.randn(2, 3)
 
     q, r = _qr(jnp.array(A), True)
-    np.testing.assert_allclose(q @ r, A[:2])
+    np.testing.assert_allclose(q @ r, A)
 
     q, r = _qr(jnp.array(B), True)
-    np.testing.assert_allclose((q @ r)[:2], B)
+    np.testing.assert_allclose((q @ r), B[:, :2])
 
     check_grads(qr, (A,), 1, modes=["rev", "fwd"])
     check_grads(qr, (B,), 1, modes=["rev", "fwd"])
