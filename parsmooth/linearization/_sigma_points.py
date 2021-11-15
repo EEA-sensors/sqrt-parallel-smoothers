@@ -40,7 +40,8 @@ def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
         chol_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
 
         temp = jnp.sqrt(x_pts.wc[:, None, None]) * chol_pts
-        temp = temp.reshape(-1, temp.shape[-1]).T  # concatenate the blocks properly
+        # concatenate the blocks properly, it's a bit urk, but what can you do...
+        temp = jnp.transpose(temp, [1, 0, 2]).reshape(temp.shape[1], -1)  
 
         chol_L = tria(jnp.concatenate([sqrt_Phi, temp], axis=1))
         chol_L = cholesky_update_many(chol_L, (F_x @ chol_x).T, -1.)
