@@ -7,7 +7,7 @@ import pytest
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, ConditionalMomentsModel
 from parsmooth._utils import tria
-from parsmooth.linearization import extended, cubature, gauss_hermite, unscented
+from parsmooth.linearization import extended, cubature, gauss_hermite, unscented, get_conditional_model
 
 LINEARIZATION_METHODS = [extended, cubature, gauss_hermite, unscented]
 
@@ -45,7 +45,7 @@ def transition_mean(x):
 
 
 def transition_cov(_x):
-    return jnp.array([[0.3**2]])
+    return jnp.array([[0.3 ** 2]])
 
 
 def transition_chol(_x):
@@ -232,4 +232,53 @@ def test_sqrt_vs_std_conditional_observation(dim_x, seed, method):
 
     np.testing.assert_allclose(sqrt_F_x, F_x, atol=1e-10)
     np.testing.assert_allclose(sqrt_remainder, remainder, atol=1e-10)
-    np.testing.assert_allclose(Q_lin, chol_Q_lin**2, atol=1e-10)
+    np.testing.assert_allclose(Q_lin, chol_Q_lin ** 2, atol=1e-10)
+
+
+@pytest.mark.parametrize("dim_x", [1, 2])
+@pytest.mark.parametrize("dim_q", [1, 2])
+@pytest.mark.parametrize("seed", [0, 42])
+@pytest.mark.parametrize("method", LINEARIZATION_METHODS)
+@pytest.mark.parametrize("sqrt", [True, False])
+def test_get_conditional_model(dim_x, dim_q, seed, method, sqrt):
+    np.random.seed(seed)
+    a = np.random.randn(dim_x, dim_x)
+    b = np.random.randn(dim_x, dim_q)
+    c = np.random.randn(dim_x)
+
+    f = lambda x, q: a @ x + b @ q + c
+
+    m_x = np.random.randn(dim_x)
+    m_q = np.random.randn(dim_q)
+
+    chol_x = np.random.rand(dim_x, dim_x)
+    chol_x[np.triu_indices(dim_x, 1)] = 0
+
+    chol_q = np.random.rand(dim_q, dim_q)
+    chol_q[np.triu_indices(dim_q, 1)] = 0
+
+    if sqrt:
+        x_mvn = MVNSqrt(m_x, chol_x)
+        q_mvn = MVNSqrt(m_q, chol_q)
+    else:
+        x_mvn = MVNStandard(m_x, chol_x @ chol_x.T)
+        q_mvn = MVNStandard(m_q, chol_q @ chol_q.T)
+
+    if dim_x != dim_q:
+        with pytest.raises(NotImplementedError):
+            _ = get_conditional_model(f, q_mvn, method)
+        return
+
+    moments_model = get_conditional_model(f, q_mvn, method)
+
+    F_x, Q_lin, remainder = method(moments_model, x_mvn)
+    if sqrt:
+        Q_lin = Q_lin @ Q_lin.T
+    x_prime = np.random.randn(dim_x)
+
+    expected = linear_conditional_mean(x_prime, m_q, a, b, c)
+    actual = F_x @ x_prime + remainder
+    expected_Q = (b @ chol_q) @ (b @ chol_q).T
+    np.testing.assert_allclose(a, F_x, atol=1e-3)
+    np.testing.assert_allclose(expected, actual, atol=1e-7)
+    np.testing.assert_allclose(expected_Q, Q_lin, atol=1e-7)
