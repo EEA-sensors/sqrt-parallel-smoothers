@@ -28,7 +28,6 @@ def config():
 @pytest.mark.parametrize("seed", [0, 42])
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 def test_params(dim_x, dim_y, seed, linearization_method):
-    print()
     np.random.seed(seed)
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
