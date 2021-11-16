@@ -11,6 +11,7 @@ def config():
     jax.config.update("jax_enable_x64", True)
     jax.config.update('jax_disable_jit', False)
     jax.config.update("jax_debug_nans", False)
+    jax.config.update("jax_platform_name", "cpu")
 
 
 @pytest.mark.parametrize("dim_x", [1, 2, 3])
