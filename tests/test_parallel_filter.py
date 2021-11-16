@@ -20,6 +20,7 @@ def config():
     jax.config.update("jax_enable_x64", True)
     jax.config.update('jax_disable_jit', False)
     jax.config.update("jax_debug_nans", False)
+    jax.config.update("jax_platform_name", "cpu")
 
 
 @pytest.mark.parametrize("dim_x", [1, 2, 3])
@@ -27,6 +28,7 @@ def config():
 @pytest.mark.parametrize("seed", [0, 42])
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 def test_params(dim_x, dim_y, seed, linearization_method):
+    print()
     np.random.seed(seed)
 
     x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)

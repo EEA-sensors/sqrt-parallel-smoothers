@@ -3,8 +3,7 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jax.scipy.linalg import cho_solve, block_diag, cholesky
-
+from jax.scipy.linalg import cho_solve
 
 from parsmooth._base import MVNSqrt, are_inputs_compatible
 from parsmooth._utils import cholesky_update_many, tria
@@ -41,9 +40,9 @@ def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
         chol_pts = jax.vmap(c_cov_or_chol)(x_pts.points)
 
         temp = jnp.sqrt(x_pts.wc[:, None, None]) * chol_pts
-        
+
         # concatenate the blocks properly, it's a bit urk, but what can you do...
-        temp = jnp.transpose(temp, [1, 0, 2]).reshape(temp.shape[1], -1)  
+        temp = jnp.transpose(temp, [1, 0, 2]).reshape(temp.shape[1], -1)
 
         chol_L = tria(jnp.concatenate([sqrt_Phi, temp], axis=1))
         chol_L = cholesky_update_many(chol_L, (F_x @ chol_x).T, -1.)
@@ -70,7 +69,6 @@ def linearize_functional(f, x, q, get_sigma_points):
         m_q, chol_q = q
         sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
         n_sigma_points, dim_out = sqrt_Phi.shape
-        
         if n_sigma_points >= dim_out:
             sqrt_Phi = tria(sqrt_Phi.T)
         else:
@@ -100,12 +98,3 @@ def _linearize_functional_common(f, x, get_sigma_points):
     F_x = cho_solve((chol_x, True), Psi_x).T
 
     return F_x, x_pts, f_pts, m_f
-
-
-def _concatenate_mvns(x, q):
-    # This code implicitly assumes that X and Q are independent multivariate Gaussians.
-    m_x, chol_x = x
-    m_q, chol_q = q
-    m_xq = jnp.concatenate([m_x, m_q])
-    chol_xq = block_diag(chol_x, chol_q)
-    return MVNSqrt(m_xq, chol_xq)

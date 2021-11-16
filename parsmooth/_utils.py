@@ -18,12 +18,8 @@ def cholesky_update_many(chol_init, update_vectors, multiplier):
     return final_chol
 
 
-# def tria(A):
-#     return qr(A.T).T
-
 def tria(A):
-    tria_A = jlinalg.qr(A.T, mode='economic')[1].T
-    return tria_A
+    return qr(A.T).T
 
 
 def _set_diagonal(x, y):
@@ -168,7 +164,7 @@ def qr(A: jnp.ndarray):
     return _qr(A)
 
 
-@partial(jax.jit, static_argnums=(1,))
+# @partial(jax.jit, static_argnums=(1,))
 def _qr(A: jnp.ndarray, return_q=False):
     m, n = A.shape
     min_ = min(m, n)
@@ -193,11 +189,20 @@ def _qr(A: jnp.ndarray, return_q=False):
         return R
 
 
-def _householder(a):
-    v = a / (a[0] + jnp.copysign(jnp.linalg.norm(a), a[0]))
-    v = v.at[0].set(1.)
-    tau = 2. / jnp.sum(v ** 2)
-    return v, tau
+def _householder(a, eps=1e-6):
+    alpha = a[0]
+    s = jnp.sum(a[1:] ** 2)
+    cond = s < eps
+
+    def if_not_cond(v):
+        t = (alpha ** 2 + s) ** 0.5
+        v0 = jax.lax.cond(alpha <= 0, lambda _: alpha - t, lambda _: -s / (alpha + t), None)
+        tau = 2 * v0 ** 2 / (s + v0 ** 2)
+        v = v / v0
+        v = v.at[0].set(1.)
+        return v, tau
+
+    return jax.lax.cond(cond, lambda v: (v, 0.), if_not_cond, a)
 
 
 def qr_jvp_rule(primals, tangents):
