@@ -168,7 +168,9 @@ def qr(A: jnp.ndarray):
 def _qr(A: jnp.ndarray, return_q=False):
     m, n = A.shape
     min_ = min(m, n)
-    Q = jnp.eye(m)
+    if return_q:
+        Q = jnp.eye(m)
+
     for j in range(min_):
         # Apply Householder transformation.
         v, tau = _householder(A[j:, j])
@@ -177,11 +179,12 @@ def _qr(A: jnp.ndarray, return_q=False):
         H = H.at[j:, j:].add(-tau * (v[:, None] @ v[None, :]))
 
         A = H @ A
-        Q = H @ Q
+        if return_q:
+            Q = H @ Q  # noqa
 
     R = jnp.triu(A[:min_, :min_])
     if return_q:
-        return Q[:n].T, R
+        return Q[:n].T, R  # noqa
     else:
         return R
 
