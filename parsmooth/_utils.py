@@ -18,8 +18,12 @@ def cholesky_update_many(chol_init, update_vectors, multiplier):
     return final_chol
 
 
+# def tria(A):
+#     return qr(A.T).T
+
 def tria(A):
-    return qr(A.T).T
+    tria_A = jlinalg.qr(A.T, mode='economic')[1].T
+    return tria_A
 
 
 def _set_diagonal(x, y):
