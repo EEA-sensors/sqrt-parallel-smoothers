@@ -60,7 +60,7 @@ def test_params(dim_x, dim_y, seed, linearization_method):
     np.testing.assert_allclose(b_std, b_sqrt, atol=1e-7)
     np.testing.assert_allclose(eta_std, eta_sqrt, atol=1e-7)
     np.testing.assert_allclose(C, U @ U.T, atol=1e-7)
-    np.testing.assert_allclose(J, Z @ Z.T, atol=1e-3)
+    np.testing.assert_allclose(J, Z @ Z.T, atol=1e-7)
 
     for actual, expected in zip(ssm, (F, Q, b, H, R, c)):
         np.testing.assert_allclose(actual, expected, atol=1e-7)
