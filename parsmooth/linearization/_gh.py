@@ -70,13 +70,15 @@ def _get_sigma_points(
     return SigmaPoints(sigma_points, wm, wc)
 
 
-def _gauss_hermite_weights(n_dim: int, order: int = 3) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _gauss_hermite_weights(n_dim: int, dtype, order: int = 3) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """ Computes the weights associated with the Gauss--Hermite quadrature method.
     The Hermite polynomial is in the physician version
     Parameters
     ----------
     n_dim: int
         Dimensionality of the problem
+    dtype:
+        dtype of the weights
     order: int, optional, default is 3
         The order of Hermite polynomial
     Returns
@@ -97,11 +99,11 @@ def _gauss_hermite_weights(n_dim: int, order: int = 3) -> Tuple[np.ndarray, np.n
     p = order
 
     hermite_coeff = _hermite_coeff(p)
-    hermite_roots = np.flip(np.roots(hermite_coeff[-1]))
+    hermite_roots = np.flip(np.roots(hermite_coeff[-1]).astype(dtype))
 
-    table = np.zeros(shape=(n, p ** n))
+    table = np.zeros(shape=(n, p ** n), dtype=np.int64)
 
-    w_1d = np.zeros(shape=(p,))
+    w_1d = np.zeros(shape=(p,), dtype=dtype)
     for i in range(p):
         w_1d[i] = (2 ** (p - 1) * np.math.factorial(p) * np.sqrt(np.pi) /
                    (p ** 2 * (np.polyval(hermite_coeff[p - 1],
@@ -109,14 +111,15 @@ def _gauss_hermite_weights(n_dim: int, order: int = 3) -> Tuple[np.ndarray, np.n
 
     # Get roll table
     for i in range(n):
-        base = np.ones(shape=(1, p ** (n - i - 1)))
+        ones = np.ones(shape=(1, p ** (n - i - 1)), dtype=np.int64)
+        base = ones.copy()
         for j in range(1, p):
             base = np.concatenate([base,
-                                   (j + 1) * np.ones(shape=(1, p ** (n - i - 1)))],
+                                   (j + 1) * ones],
                                   axis=1)
         table[n - i - 1, :] = np.tile(base, (1, int(p ** i)))
 
-    table = table.astype("int64") - 1
+    table -= 1
 
     s = 1 / (np.sqrt(np.pi) ** n)
 
@@ -139,8 +142,8 @@ def _hermite_coeff(order: int) -> List:
     H: List
         The 0 to p-th order Hermite polynomial coefficients in a list.
     """
-    H0 = np.array([1])
-    H1 = np.array([2, 0])
+    H0 = np.array([1], dtype=np.int64)
+    H1 = np.array([2, 0], dtype=np.int64)
 
     H = [H0, H1]
 

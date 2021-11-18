@@ -36,6 +36,7 @@ def _set_triu(x, val):
 
 def _cholesky_update(chol, update_vector, multiplier=1.):
     chol_diag = jnp.diag(chol)
+    dtype = chol.dtype
 
     # The algorithm in [1] is implemented as a double for loop. We can treat
     # the inner loop in Algorithm 3.1 as a vector operation, and thus the
@@ -68,7 +69,8 @@ def _cholesky_update(chol, update_vector, multiplier=1.):
     chol = chol.T
 
     _, (new_diag, new_chol, _, _) = jax.lax.scan(scan_body,
-                                                 (0., jnp.zeros_like(chol[0]), update_vector, 1.),
+                                                 (jnp.zeros((), dtype), jnp.zeros_like(chol[0]), update_vector,
+                                                  jnp.ones((), dtype=dtype)),
                                                  (jnp.arange(0, chol.shape[0]), chol_diag, chol),
                                                  )
 
@@ -167,15 +169,16 @@ def qr(A: jnp.ndarray):
 # @partial(jax.jit, static_argnums=(1,))
 def _qr(A: jnp.ndarray, return_q=False):
     m, n = A.shape
+    dtype = A.dtype
     min_ = min(m, n)
     if return_q:
-        Q = jnp.eye(m)
+        Q = jnp.eye(m, dtype=dtype)
 
     for j in range(min_):
         # Apply Householder transformation.
         v, tau = _householder(A[j:, j])
 
-        H = jnp.eye(m)
+        H = jnp.eye(m, dtype=dtype)
         H = H.at[j:, j:].add(-tau * (v[:, None] @ v[None, :]))
 
         A = H @ A
@@ -207,7 +210,8 @@ def _householder(a):
         v = v.at[0].set(1.)
         return v, tau
 
-    return jax.lax.cond(cond, lambda v: (v, 0.), if_not_cond, a)
+    zero = jnp.zeros((), dtype=a.dtype)
+    return jax.lax.cond(cond, lambda v: (v, zero), if_not_cond, a)
 
 
 def qr_jvp_rule(primals, tangents):

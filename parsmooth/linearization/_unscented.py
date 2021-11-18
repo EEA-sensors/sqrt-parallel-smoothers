@@ -62,17 +62,18 @@ def _get_sigma_points(
     """
     mean, chol = mvn
     n_dim = mean.shape[0]
+    dtype = mean.dtype
     if kappa is None:
         kappa = 3. + n_dim
-    wm, wc, lamda = _unscented_weights(n_dim, alpha, beta, kappa)
+    wm, wc, lamda = _unscented_weights(n_dim, alpha, beta, kappa, dtype)
     scaled_chol = jnp.sqrt(n_dim + lamda) * mvn.chol
 
-    zeros = jnp.zeros((1, n_dim))
+    zeros = jnp.zeros_like(scaled_chol, shape=(1, n_dim))
     sigma_points = mean[None, :] + jnp.concatenate([zeros, scaled_chol.T, -scaled_chol.T], axis=0)
     return SigmaPoints(sigma_points, wm, wc)
 
 
-def _unscented_weights(n_dim: int, alpha: float, beta: float, kappa: Optional[float]) -> Tuple[
+def _unscented_weights(n_dim: int, alpha: float, beta: float, kappa: Optional[float], dtype) -> Tuple[
     np.ndarray, np.ndarray, float]:
     """ Computes the weights associated with the spherical cubature method.
     The number of sigma-points is 2 * n_dim
@@ -83,7 +84,8 @@ def _unscented_weights(n_dim: int, alpha: float, beta: float, kappa: Optional[fl
         Dimension of the space
     alpha, beta, kappa: float, optional
         Parameters of the unscented transform. Default is `alpha=0.5`, `beta=2.` and `kappa=3-n`
-
+    dtype:
+        dtype of the output
     Returns
     -------
     wm: np.ndarray
@@ -95,7 +97,7 @@ def _unscented_weights(n_dim: int, alpha: float, beta: float, kappa: Optional[fl
     """
 
     lamda = alpha ** 2 * (n_dim + kappa) - n_dim
-    wm = jnp.full(2 * n_dim + 1, 1 / (2 * (n_dim + lamda)))
+    wm = jnp.full(2 * n_dim + 1, 1 / (2 * (n_dim + lamda)), dtype=dtype)
 
     wm = jax.ops.index_update(wm, 0, lamda / (n_dim + lamda), indices_are_sorted=True, unique_indices=True)
     wc = jax.ops.index_update(wm, 0, lamda / (n_dim + lamda) + (1 - alpha ** 2 + beta), indices_are_sorted=True,

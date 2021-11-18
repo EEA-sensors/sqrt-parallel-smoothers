@@ -24,7 +24,7 @@ def standard_filtering_operator(elem1, elem2):
     A2, b2, C2, eta2, J2 = elem2
     dim = b1.shape[0]
 
-    I_dim = jnp.eye(dim)
+    I_dim = jnp.eye(dim, dtype=A1.dtype)
 
     IpCJ = I_dim + jnp.dot(C1, J2)
     IpJC = I_dim + jnp.dot(J2, C1)
@@ -60,7 +60,7 @@ def sqrt_filtering_operator(elem1, elem2):
 
     nx = Z2.shape[0]
 
-    Xi = jnp.block([[U1.T @ Z2, jnp.eye(nx)],
+    Xi = jnp.block([[U1.T @ Z2, jnp.eye(nx, dtype=A1.dtype)],
                     [Z2, jnp.zeros_like(A1)]])
     tria_xi = tria(Xi)
     Xi11 = tria_xi[:nx, :nx]
@@ -68,10 +68,12 @@ def sqrt_filtering_operator(elem1, elem2):
     Xi22 = tria_xi[nx: nx + nx, nx:]
 
     A = A2 @ A1 - jlinalg.solve_triangular(Xi11, U1.T @ A2.T, lower=True).T @ Xi21.T @ A1
-    b = A2 @ (jnp.eye(nx) - jlinalg.solve_triangular(Xi11, U1.T, lower=True).T @ Xi21.T) @ (b1 + U1 @ U1.T @ eta2) + b2
+    b = A2 @ (jnp.eye(nx, dtype=A1.dtype) - jlinalg.solve_triangular(Xi11, U1.T, lower=True).T @ Xi21.T) @ (
+            b1 + U1 @ U1.T @ eta2) + b2
     U = tria(jnp.concatenate([jlinalg.solve_triangular(Xi11, U1.T @ A2.T, lower=True).T, U2], axis=1))
-    eta = A1.T @ (jnp.eye(nx) - jlinalg.solve_triangular(Xi11, Xi21.T, lower=True, trans=True).T @ U1.T) @ (
-            eta2 - Z2 @ Z2.T @ b1) + eta1
+    eta = A1.T @ (jnp.eye(nx, dtype=A1.dtype) - jlinalg.solve_triangular(Xi11, Xi21.T, lower=True,
+                                                                         trans=True).T @ U1.T) @ (
+                  eta2 - Z2 @ Z2.T @ b1) + eta1
     Z = tria(jnp.concatenate([A1.T @ Xi22, Z1], axis=1))
 
     return A, b, U, eta, Z

@@ -18,12 +18,13 @@ def filtering(observations: jnp.ndarray,
               return_loglikelihood=False):
     T = observations.shape[0]
     m0, chol_or_cov_0 = x0
+    dtype = m0.dtype
     if nominal_trajectory is not None:
         are_inputs_compatible(x0, nominal_trajectory)
 
     else:
         nominal_mean = jnp.zeros_like(m0, shape=(T + 1,) + m0.shape)
-        nominal_cov_or_chol = jnp.repeat(jnp.eye(m0.shape[-1])[None, ...], T + 1, 0)
+        nominal_cov_or_chol = jnp.repeat(jnp.eye(m0.shape[-1], dtype=dtype)[None, ...], T + 1, 0)
         nominal_trajectory = type(x0)(nominal_mean, nominal_cov_or_chol)  # this is kind of a hack but I've seen worse.
 
     if isinstance(x0, MVNSqrt):
@@ -121,9 +122,11 @@ def _sqrt_associative_params_one(linearization_method, transition_model, observa
     ny = cholR.shape[0]
 
     m1 = F @ m0 + b
-    N1_ = tria(jnp.concatenate((F @ L0, cholQ), axis=1))
+    N1_ = tria(jnp.concatenate((F @ L0,
+                                cholQ), axis=1))
+    zeros = jnp.zeros_like(N1_, shape=(N1_.shape[0], cholR.shape[1]))
     Psi_ = jnp.block([[H @ N1_, cholR],
-                      [N1_, jnp.zeros((N1_.shape[0], cholR.shape[1]))]])
+                      [N1_, zeros]])
     Tria_Psi_ = tria(Psi_)
     Psi11 = Tria_Psi_[:ny, :ny]
     Psi21 = Tria_Psi_[ny: ny + nx, :ny]
@@ -138,7 +141,8 @@ def _sqrt_associative_params_one(linearization_method, transition_model, observa
     eta = jlinalg.solve_triangular(Psi11, Z.T, trans=True, lower=True).T @ (y - H @ b - c)
 
     if nx > ny:
-        Z = jnp.concatenate([Z, jnp.zeros((nx, nx - ny))], axis=1)
+        zeros = jnp.zeros_like(Z, shape=(nx, nx - ny))
+        Z = jnp.concatenate([Z, zeros], axis=1)
     else:
         Z = tria(Z)
 

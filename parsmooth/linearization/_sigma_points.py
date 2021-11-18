@@ -25,6 +25,8 @@ def _cov(wc, x_pts, x_mean, y_points, y_mean):
 def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
     x_sqrt = get_mvnsqrt(x)
     m_x, chol_x = x_sqrt
+    dtype = m_x.dtype
+
     x_pts = get_sigma_points(x_sqrt)
 
     f_pts = jax.vmap(c_m)(x_pts.points)
@@ -45,7 +47,7 @@ def linearize_conditional(c_m, c_cov_or_chol, x, get_sigma_points):
         temp = jnp.transpose(temp, [1, 0, 2]).reshape(temp.shape[1], -1)
 
         chol_L = tria(jnp.concatenate([sqrt_Phi, temp], axis=1))
-        chol_L = cholesky_update_many(chol_L, (F_x @ chol_x).T, -1.)
+        chol_L = cholesky_update_many(chol_L, (F_x @ chol_x).T, -jnp.ones((), dtype))
 
         return F_x, chol_L, m_f - F_x @ m_x
 
@@ -67,15 +69,19 @@ def linearize_functional(f, x, q, get_sigma_points):
     if isinstance(x, MVNSqrt):
         m_x, chol_x = x
         m_q, chol_q = q
+        dtype = m_x.dtype
+
         sqrt_Phi = jnp.sqrt(x_pts.wc[:, None]) * (f_pts - m_f[None, :])
         n_sigma_points, dim_out = sqrt_Phi.shape
         if n_sigma_points >= dim_out:
             sqrt_Phi = tria(sqrt_Phi.T)
         else:
-            sqrt_Phi = jnp.concatenate([sqrt_Phi.T, jnp.zeros((dim_out, dim_out - n_sigma_points))], axis=1)
+            zeros = jnp.zeros_like(sqrt_Phi, shape=(dim_out, dim_out - n_sigma_points))
+            sqrt_Phi = jnp.concatenate([sqrt_Phi.T, zeros], axis=1)
 
         chol_L = tria(jnp.concatenate([sqrt_Phi, chol_q], axis=1))
-        chol_L = cholesky_update_many(chol_L, (F_x @ chol_x).T, -1.)
+
+        chol_L = cholesky_update_many(chol_L, (F_x @ chol_x).T, -jnp.ones((), dtype))
         return F_x, chol_L, m_f - F_x @ m_x + m_q
     m_x, cov_x = x
     m_q, cov_q = q

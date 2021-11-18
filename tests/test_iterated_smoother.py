@@ -1,6 +1,7 @@
 from functools import partial
 
 import jax
+import jax.numpy as jnp
 import numpy as np
 import pytest
 from jax.test_util import check_grads
@@ -28,21 +29,22 @@ def config():
 @pytest.mark.parametrize("seed", [0])
 @pytest.mark.parametrize("linearization_method", LIST_LINEARIZATIONS)
 @pytest.mark.parametrize("parallel", [True, False])
-def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_linear(dim_x, dim_y, seed, linearization_method, parallel, dtype):
     np.random.seed(seed)
     T = 5
 
-    x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x)
+    x0, chol_x0, F, Q, cholQ, b, _ = get_system(dim_x, dim_x, dtype)
 
-    _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y)
+    _, _, H, R, cholR, c, _ = get_system(dim_x, dim_y, dtype)
 
-    m_nominal = np.random.randn(T + 1, dim_x)
-    P_nominal = np.repeat(np.eye(dim_x, dim_x)[None, ...], T + 1, axis=0)
+    m_nominal = np.random.randn(T + 1, dim_x).astype(dtype)
+    P_nominal = np.repeat(np.eye(dim_x, dim_x, dtype=dtype)[None, ...], T + 1, axis=0)
     cholP_nominal = P_nominal
     x_nominal_sqrt = MVNSqrt(m_nominal, cholP_nominal)
     x_nominal = MVNStandard(m_nominal, P_nominal)
 
-    true_states, observations = get_data(x0.mean, F, H, R, Q, b, c, T)
+    true_states, observations = get_data(x0.mean, F, H, R, Q, b, c, T, chol_R=cholR, chol_Q=cholQ, dtype=dtype)
 
     sqrt_transition_model = FunctionalModel(partial(lgssm_f, A=F), MVNSqrt(b, cholQ))
     sqrt_observation_model = FunctionalModel(partial(lgssm_h, H=H), MVNSqrt(c, cholR))
@@ -61,12 +63,20 @@ def test_linear(dim_x, dim_y, seed, linearization_method, parallel):
                                            linearization_method, x_nominal_sqrt, parallel,
                                            criterion=lambda i, *_: i < 5)
 
-    np.testing.assert_array_almost_equal(iterated_res.mean, seq_smoother_res.mean, decimal=4)
-    np.testing.assert_array_almost_equal(iterated_res.cov, seq_smoother_res.cov, decimal=4)
-    np.testing.assert_array_almost_equal(sqrt_iterated_res.mean, seq_smoother_res.mean, decimal=4)
-    np.testing.assert_array_almost_equal(
-        sqrt_iterated_res.chol @ np.transpose(sqrt_iterated_res.chol, [0, 2, 1]),
-        seq_smoother_res.cov, decimal=4)
+    assert jnp.issubdtype(iterated_res.mean.dtype, dtype)
+    assert jnp.issubdtype(iterated_res.cov.dtype, dtype)
+    assert jnp.issubdtype(seq_smoother_res.mean.dtype, dtype)
+    assert jnp.issubdtype(seq_smoother_res.cov.dtype, dtype)
+
+    assert jnp.issubdtype(sqrt_iterated_res.mean.dtype, dtype)
+    assert jnp.issubdtype(sqrt_iterated_res.chol.dtype, dtype)
+    if dtype == np.float64:
+        np.testing.assert_array_almost_equal(iterated_res.mean, seq_smoother_res.mean, decimal=4)
+        np.testing.assert_array_almost_equal(iterated_res.cov, seq_smoother_res.cov, decimal=4)
+        np.testing.assert_array_almost_equal(sqrt_iterated_res.mean, seq_smoother_res.mean, decimal=4)
+        np.testing.assert_array_almost_equal(
+            sqrt_iterated_res.chol @ np.transpose(sqrt_iterated_res.chol, [0, 2, 1]),
+            seq_smoother_res.cov, decimal=4)
 
 
 @pytest.mark.skip("Not sure if gradient rule works for linear function in sigma points case.")

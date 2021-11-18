@@ -39,7 +39,7 @@ def observation_function(x, H):
     return jnp.dot(H, x)
 
 
-def get_data(x0, A, H, R, Q, b, c, T, random_state=None, chol_R=None):
+def get_data(x0, A, H, R, Q, b, c, T, random_state=None, chol_R=None, chol_Q=None, dtype=np.float32):
     """
     Parameters
     ----------
@@ -63,6 +63,10 @@ def get_data(x0, A, H, R, Q, b, c, T, random_state=None, chol_R=None):
         numpy random state
     chol_R: array_like, optional
         cholesky of R
+    chol_Q: array_like, optional
+        cholesky of Q
+    dtype: optional
+        dtype of the output
 
     Returns
     -------
@@ -76,14 +80,16 @@ def get_data(x0, A, H, R, Q, b, c, T, random_state=None, chol_R=None):
 
     R_shape = R.shape[0]
     Q_shape = Q.shape[0]
-    normals = random_state.randn(T, Q_shape + R_shape).astype(np.float32)
+    normals = random_state.randn(T, Q_shape + R_shape).astype(dtype)
     if chol_R is None:
         chol_R = np.linalg.cholesky(R)
-    chol_Q = np.linalg.cholesky(Q)
 
-    x = np.copy(x0).astype(np.float32)
-    observations = np.empty((T, R_shape), dtype=np.float32)
-    true_states = np.empty((T + 1, Q_shape), dtype=np.float32)
+    if chol_Q is None:
+        chol_Q = np.linalg.cholesky(Q)
+
+    x = np.copy(x0).astype(dtype)
+    observations = np.empty((T, R_shape), dtype=dtype)
+    true_states = np.empty((T + 1, Q_shape), dtype=dtype)
     true_states[0] = x
 
     for i in range(T):

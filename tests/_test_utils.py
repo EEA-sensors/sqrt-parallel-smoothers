@@ -1,21 +1,22 @@
+import jax.numpy as jnp
 import numpy as np
 
 from parsmooth._base import MVNStandard, MVNSqrt
 
 
-def get_system(dim_x, dim_y):
-    m = np.random.randn(dim_x)
-    cholP = np.random.rand(dim_x, dim_x)
-    cholP[np.triu_indices(dim_x, 1)] = 0.
+def get_system(dim_x, dim_y, dtype=np.float32):
+    m = jnp.array(np.random.randn(dim_x), dtype)
+    cholP = jnp.array(np.random.rand(dim_x, dim_x), dtype)
+    cholP = cholP.at[np.triu_indices(dim_x, 1)].set(0.)
     P = cholP @ cholP.T
 
-    cholR = np.random.rand(dim_y, dim_y)
-    cholR[np.triu_indices(dim_y, 1)] = 0.
+    cholR = jnp.array(np.random.rand(dim_y, dim_y), dtype)
+    cholR = cholR.at[np.triu_indices(dim_y, 1)].set(0.)
     R = cholR @ cholR.T
 
-    H = np.eye(dim_y, dim_x)
-    c = np.random.randn(dim_y)
-    y = np.random.randn(dim_y)
+    H = jnp.eye(dim_y, dim_x, dtype=dtype)
+    c = jnp.array(np.random.randn(dim_y), dtype)
+    y = jnp.array(np.random.randn(dim_y), dtype)
 
     chol_x = MVNSqrt(m, cholP)
     x = MVNStandard(m, P)
