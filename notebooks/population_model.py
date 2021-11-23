@@ -131,11 +131,10 @@ def _chol_observation_function(x, lam):
 
 def make_parameters(lam, Q):
     """ Paremeters of the stochastic Ricker map model which is explained in
-    [1] "A comparison of inferential methods for highly nonlinear state space models
-    in ecology and epidemiology
+    [1] "A comparison of inferential methods for highly nonlinear state space models in ecology and epidemiology
     Fasiolo, Matteo and Pya, Natalya and Wood, Simon N"
     [2] "Iterative filtering and smoothing in nonlinear and non-Gaussian systems using conditional moments,
-    Tronarp, Filip and Garcia-Fernandez, Angel F and Särkkä, Simo},
+    Tronarp, Filip and Garcia-Fernandez, Angel F and Särkkä, Simo"
 
         Parameters
         ----------
