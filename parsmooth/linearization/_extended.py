@@ -40,18 +40,11 @@ def linearize(model: Union[FunctionalModel, ConditionalMomentsModel], x: Union[M
         return _standard_linearize_conditional(model.conditional_mean, model.conditional_covariance_or_cholesky, x)
 
 
-def _linearize_conditional_common(c_m, c_cov, x) -> Tuple[Any, Any, Any]:
-    m, p = x
-    d_cm = jax.jacfwd(c_m, 0)
-    return c_m(m), c_cov(m) + d_cm(m) @ p @ d_cm(m).T, d_cm(m) @ p
-
-
 def _standard_linearize_conditional(c_m, c_cov, x):
-    E_y, Cov_y, Cov_y_x = _linearize_conditional_common(c_m, c_cov, x)
     m, p = x
-    F = jnp.linalg.solve(p.T, Cov_y_x.T).T
-    b = E_y - F @ m
-    Cov = Cov_y - F @ p @ F.T
+    F = jax.jacfwd(c_m, 0)(m)
+    b = c_m(m) - F @ m
+    Cov = c_cov(m)
     return F, Cov, b
 
 
