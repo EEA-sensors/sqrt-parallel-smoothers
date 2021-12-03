@@ -1,5 +1,6 @@
 from functools import partial
 
+import jax
 import jax.numpy as jnp
 from jax import random
 from jax.lax import scan
@@ -61,7 +62,7 @@ def _chol_transition_function(_x, Q):
     return jnp.sqrt(Q)
 
 
-def _observation_function(x, lam, seed):
+def _observation_function(x, lam, key):
     """
     Returns the noisily observed Ricker map
     Parameters
@@ -70,14 +71,13 @@ def _observation_function(x, lam, seed):
         The current state
     lam: float
         The poisson parameter
-    seed: int
-        The random seed
+    key: jnp.ndarray
+        jax random key
     Returns
     -------
     y: array_like
 
     """
-    key = random.PRNGKey(seed)
     return random.poisson(key, lam * jnp.exp(x), shape=x.shape).astype(float)
 
 
@@ -169,7 +169,7 @@ def make_parameters(lam, Q):
     return mean_transition_function, cov_transition_function, mean_observation_function, cov_observation_function, chol_transition_function, chol_observation_function
 
 
-def get_data(x0: jnp.ndarray, T: int, Q: jnp.ndarray, lam: jnp.ndarray, seed: int):
+def get_data(x0: jnp.ndarray, T: int, Q: jnp.ndarray, lam: jnp.ndarray, key: jnp.ndarray):
     """
     Parameters
     ----------
@@ -181,8 +181,8 @@ def get_data(x0: jnp.ndarray, T: int, Q: jnp.ndarray, lam: jnp.ndarray, seed: in
         covariance of transition noise
     lam: float
         poisson parameter
-    seed: int
-        numpy seed
+    key: jnp.ndarray
+        jax random key
     Returns
     -------
     true_states: array_like
@@ -190,20 +190,19 @@ def get_data(x0: jnp.ndarray, T: int, Q: jnp.ndarray, lam: jnp.ndarray, seed: in
     observations: array_like
         array of observations
     """
-    key = random.PRNGKey(seed)
+    key, gaussian_key = jax.random.split(key)
+    
+    chol_Q = jnp.linalg.cholesky(Q)
+    noises = jax.random.normal(key, shape=(T, x0.shape[0])) @ chol_Q.T
 
-    noises = (jnp.linalg.cholesky(Q) * random.normal(key, shape=(T, x0.shape[0])))
-
-    def body(carry, noise):
-        x_k = carry[0]
+    def body(x_k, inputs):
+        noise, poisson_key = inputs
         x_k_p1 = _transition_function(x_k) + noise
-        y_k = _observation_function(x_k, lam, seed)
+        y_k = _observation_function(x_k_p1, lam, poisson_key)
+        return x_k_p1, (x_k_p1, y_k)
 
-        carry = (x_k_p1, y_k)
-        return carry, (x_k_p1, y_k)
+    poisson_keys = jax.random.split(key, T)
 
-    _, output = scan(body, (x0, x0 * 0.), noises)
-    true_states = jnp.squeeze(output[0], axis=1)
-    observations = output[1]
-
+    _, (true_states, observations) = scan(body, x0, (noises, poisson_keys))
+    true_states = jnp.insert(true_states, 0, x0, 0)
     return true_states, observations
