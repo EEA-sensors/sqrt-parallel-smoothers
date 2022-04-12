@@ -2,8 +2,8 @@ import math
 from functools import partial
 from typing import Tuple, Union, List
 
+import jax
 import jax.numpy as jnp
-import jax.ops
 import numpy as np
 
 from parsmooth._base import MVNStandard, FunctionalModel, ConditionalMomentsModel, MVNSqrt
