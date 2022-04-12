@@ -193,7 +193,7 @@ def get_data(x0: jnp.ndarray, T: int, Q: jnp.ndarray, lam: jnp.ndarray, key: jnp
     key, gaussian_key = jax.random.split(key)
     
     chol_Q = jnp.linalg.cholesky(Q)
-    noises = jax.random.normal(key, shape=(T, x0.shape[0])) @ chol_Q.T
+    noises = jax.random.normal(gaussian_key, shape=(T, x0.shape[0])) @ chol_Q.T
 
     def body(x_k, inputs):
         noise, poisson_key = inputs
