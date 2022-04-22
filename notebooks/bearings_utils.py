@@ -107,7 +107,7 @@ def make_parameters(qc, qw, r, dt, s1, s2):
                    [0, qc * dt ** 2 / 2, 0, qc * dt, 0],
                    [0, 0, 0, 0, dt * qw]])
 
-    R = r ** 2 * jnp.eye(2)
+    R = jnp.diag(jnp.array([r**2, 0.1**2]))
 
     observation_function = jit(partial(_observation_function, s1=s1, s2=s2))
     transition_function = jit(partial(_transition_function, dt=dt))

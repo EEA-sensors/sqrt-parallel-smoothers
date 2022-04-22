@@ -143,7 +143,7 @@ def _get_data(x, dt, a_s, s1, s2, r, normals, observations, true_states):
                       [0, 0, -a, 0]], dtype=np.float32)
         x = linalg.expm(F * dt) @ x
         y1 = np.arctan2(x[1] - s1[1], x[0] - s1[0]) + r * normals[i, 0]
-        y2 = np.arctan2(x[1] - s2[1], x[0] - s2[0]) + r * normals[i, 1]
+        y2 = np.arctan2(x[1] - s2[1], x[0] - s2[0]) + 0.1 * normals[i, 1]
 
         observations[i] = [y1, y2]
         observations[i] = [y1, y2]
