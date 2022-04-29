@@ -192,17 +192,15 @@ def _qr(A: jnp.ndarray, return_q=False):
 def _householder(a):
     alpha = a[0]
     s = jnp.sum(a[1:] ** 2)
-    cond = s < eps
 
-    def if_not_cond(v):
-        t = (alpha ** 2 + s) ** 0.5
-        v0 = jax.lax.cond(alpha <= 0, lambda _: alpha - t, lambda _: -s / (alpha + t), None)
-        tau = 2 * v0 ** 2 / (s + v0 ** 2)
-        v = v / v0
-        v = v.at[0].set(1.)
-        return v, tau
-
-    return jax.lax.cond(cond, lambda v: (v, 0.), if_not_cond, a)
+    t = (alpha ** 2 + s) ** 0.5
+    v0 = jax.lax.cond(alpha <= 0, lambda _: alpha - t, lambda _: -s / (alpha + t), None)
+    
+    tau = 2 * v0 ** 2 / (s + v0 ** 2)
+    v = v / v0
+    v = v.at[0].set(1.)
+    
+    return v, tau
 
 
 def qr_jvp_rule(primals, tangents):
