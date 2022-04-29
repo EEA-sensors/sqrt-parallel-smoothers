@@ -190,11 +190,6 @@ def _qr(A: jnp.ndarray, return_q=False):
 
 
 def _householder(a):
-    if a.dtype == jnp.float64:
-        eps = 1e-9
-    else:
-        eps = 1e-7
-
     alpha = a[0]
     s = jnp.sum(a[1:] ** 2)
     cond = s < eps
