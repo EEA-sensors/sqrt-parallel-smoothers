@@ -197,7 +197,7 @@ def _householder(a):
     v0 = jax.lax.cond(alpha <= 0, lambda _: alpha - t, lambda _: -s / (alpha + t), None)
     
     tau = 2 * v0 ** 2 / (s + v0 ** 2)
-    v = v / v0
+    v = a / v0
     v = v.at[0].set(1.)
     
     return v, tau
