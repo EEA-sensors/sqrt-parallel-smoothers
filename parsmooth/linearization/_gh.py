@@ -65,7 +65,7 @@ def _get_sigma_points(
     mean, chol = mvn
     n_dim = mean.shape[0]
     wm, wc, xi = _gauss_hermite_weights(n_dim, order)
-    sigma_points = mean[None, :] + math.sqrt(2) * (mvn.chol @ xi).T
+    sigma_points = mean[None, :] + (mvn.chol @ xi).T
 
     return SigmaPoints(sigma_points, wm, wc)
 
@@ -121,7 +121,7 @@ def _gauss_hermite_weights(n_dim: int, order: int = 3) -> Tuple[np.ndarray, np.n
     s = 1 / (np.sqrt(np.pi) ** n)
 
     wm = s * np.prod(w_1d[table], axis=0)
-    xi = hermite_roots[table]
+    xi = np.sqrt(2) * hermite_roots[table]
 
     return wm, wm, xi
 
