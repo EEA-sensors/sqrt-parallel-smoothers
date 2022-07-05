@@ -4,7 +4,7 @@ The code leverages JAX and implements several linearization algorithms,
 both in a sequential and parallel fashion, as well as low-memory cost algorithms computing gradients of required quantities 
 (such as the pseudo-loglikelihood of the system).
 
-This code was written by @AdrienCorenflos and @Fatemeh-Yaghoobi as a companion code for the article 
+This code was written by [Adrien Corenflos](https://github.com/AdrienCorenflos) and [Fatemeh Yaghoobi](https://github.com/Fatemeh-Yaghoobi) as a companion code for the article 
 "Parallel square-root statistical linear regression for inference in nonlinear state space models" 
 by Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, and Simo Särkkä, ArXiv link: https://arxiv.org/abs/2207.00426
 
