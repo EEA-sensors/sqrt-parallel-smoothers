@@ -25,5 +25,10 @@ Example uses (reproducing the experiments of our paper) can be found in the [exa
 If you find this work useful, please cite us in the following way:
 
 ```
-F. Yaghoobi, A. Corenflos, S. Hassan, and S. Särkkä, "Parallel square-root statistical linear regression for inference in nonlinear state space models," 2022.
+@misc{yaghoobi2022sqrt,
+Author = {Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, Simo Särkkä},
+Title = {Parallel square-root statistical linear regression for inference in nonlinear state space models},
+Year = {2022},
+Eprint = {arXiv:2207.00426},
+}
 ```
