@@ -6,9 +6,9 @@ both in a sequential and parallel fashion, as well as low-memory cost algorithms
 
 This code was written by @AdrienCorenflos and @Fatemeh-Yaghoobi as a companion code for the article 
 "Parallel square-root statistical linear regression for inference in nonlinear state space models" 
-by Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, and Simo Särkkä, ArXiv link:.
+by Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, and Simo Särkkä, ArXiv link: https://arxiv.org/abs/2207.00426
 
-## Installation 
+## Installation  
 
 1. Create a virtual environment and clone this repository
 2. Install JAX (preferably with GPU support) following https://github.com/google/jax#installation
