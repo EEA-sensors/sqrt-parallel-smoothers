@@ -26,7 +26,7 @@ If you find this work useful, please cite us in the following way:
 
 ```
 @misc{yaghoobi2022sqrt,
-Author = {Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, Simo Särkkä},
+Author = {Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, Simo S\"arkk\"a},
 Title = {Parallel square-root statistical linear regression for inference in nonlinear state space models},
 Year = {2022},
 Eprint = {arXiv:2207.00426},
