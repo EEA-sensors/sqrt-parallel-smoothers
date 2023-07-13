@@ -49,7 +49,7 @@ def _standard_smooth(F, Q, b, xf, xs):
     S = F @ Pf @ F.T + Q
     cov_diff = Ps - S
 
-    gain = Pf @ jlag.solve(S, F, sym_pos=True).T
+    gain = Pf @ jlag.solve(S, F, assume_a="pos").T
     ms = mf + gain @ mean_diff
     Ps = Pf + gain @ cov_diff @ gain.T
 

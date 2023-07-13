@@ -82,7 +82,7 @@ def _standard_associative_params_one(linearization_method, transition_model, obs
     P = F @ P @ F.T + Q
 
     S = H @ P @ H.T + R
-    S_invH = jlinalg.solve(S, H, sym_pos=True)
+    S_invH = jlinalg.solve(S, H, assume_a="pos")
     K = (S_invH @ P).T
     A = F - K @ H @ F
 

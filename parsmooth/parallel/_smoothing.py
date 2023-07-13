@@ -60,7 +60,7 @@ def _standard_associative_params(linearization_method, transition_model, n_k_1, 
     F, Q, b = linearization_method(transition_model, n_k_1)
     Pp = F @ P @ F.T + Q
 
-    E = jlinalg.solve(Pp, F @ P, sym_pos=True).T
+    E = jlinalg.solve(Pp, F @ P, assume_a="pos").T
 
     g = m - E @ (F @ m + b)
     L = P - E @ Pp @ E.T
