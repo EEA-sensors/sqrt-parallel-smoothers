@@ -41,6 +41,7 @@ setuptools.setup(
     name="parsmooth",
     author="Adrien Corenflos",
     version=get_version("parsmooth/__init__.py"),
+    python_requires='>=3.8,<=3.12',
     description="Parallel non-linear smoothing and parameter estimation for state space models",
     long_description=long_description,
     packages=setuptools.find_packages(),
