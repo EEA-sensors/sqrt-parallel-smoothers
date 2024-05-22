@@ -191,7 +191,7 @@ def get_data(x0: jnp.ndarray, T: int, Q: jnp.ndarray, lam: jnp.ndarray, key: jnp
         array of observations
     """
     key, gaussian_key = jax.random.split(key)
-    
+
     chol_Q = jnp.linalg.cholesky(Q)
     noises = jax.random.normal(gaussian_key, shape=(T, x0.shape[0])) @ chol_Q.T
 

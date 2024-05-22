@@ -4,6 +4,7 @@ from typing import Callable, Union
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlag
+from jax.tree_util import tree_map
 
 from parsmooth._base import MVNStandard, MVNSqrt, FunctionalModel
 from parsmooth._utils import tria, none_or_shift, none_or_concat
@@ -66,7 +67,7 @@ def _sampling_common(key: jnp.ndarray,
                      filter_trajectory: MVNSqrt or MVNStandard,
                      linearization_method: Callable,
                      nominal_trajectory: Union[MVNSqrt, MVNStandard]):
-    last_state = jax.tree_map(lambda z: z[-1], filter_trajectory)
+    last_state = tree_map(lambda z: z[-1], filter_trajectory)
     filter_trajectory = none_or_shift(filter_trajectory, -1)
     F_x, cov_or_chol, b = jax.vmap(linearization_method, in_axes=[None, 0])(transition_model,
                                                                             none_or_shift(nominal_trajectory, -1))
@@ -99,7 +100,7 @@ def _standard_gain_and_inc(F, Q, b, xf, eps):
     mf, Pf = xf
 
     S = F @ Pf @ F.T + Q
-    gain = Pf @ jlag.solve(S, F, sym_pos=True).T
+    gain = Pf @ jlag.solve(S, F, assume_a="pos").T
 
     inc_Sig = Pf - gain @ S @ gain.T
     inc_m = mf - gain @ (F @ mf + b)

@@ -120,5 +120,3 @@ def test_vs_sequential_filter(dim_x, dim_y, seed, linearization_method):
     assert seq_sqrt_ell == pytest.approx(seq_ell)
     assert par_ell == pytest.approx(seq_ell)
     assert par_sqrt_ell == pytest.approx(seq_ell)
-
-

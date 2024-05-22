@@ -7,6 +7,7 @@ from jax import custom_vjp, vjp
 from jax.custom_derivatives import closure_convert
 from jax.flatten_util import ravel_pytree
 from jax.lax import while_loop
+from jax.tree_util import tree_map
 
 
 def cholesky_update_many(chol_init, update_vectors, multiplier):
@@ -83,17 +84,17 @@ def none_or_shift(x, shift):
     if x is None:
         return None
     if shift > 0:
-        return jax.tree_map(lambda z: z[shift:], x)
-    return jax.tree_map(lambda z: z[:shift], x)
+        return tree_map(lambda z: z[shift:], x)
+    return tree_map(lambda z: z[:shift], x)
 
 
 def none_or_concat(x, y, position=1):
     if x is None or y is None:
         return None
     if position == 1:
-        return jax.tree_map(lambda a, b: jnp.concatenate([a[None, ...], b]), y, x)
+        return tree_map(lambda a, b: jnp.concatenate([a[None, ...], b]), y, x)
     else:
-        return jax.tree_map(lambda a, b: jnp.concatenate([b, a[None, ...]]), y, x)
+        return tree_map(lambda a, b: jnp.concatenate([b, a[None, ...]]), y, x)
 
 
 # FIXED POINT UTIL
@@ -120,7 +121,7 @@ def _fixed_point_rev(f, _criterion, res, x_star_bar):
                                          (params, x_star, x_star_bar),
                                          x_star_bar,
                                          lambda i, *_: i < n_iter + 1)[0])
-    return theta_bar, jax.tree_map(jnp.zeros_like, x_star)
+    return theta_bar, tree_map(jnp.zeros_like, x_star)
 
 
 def _rev_iter(f, u, *packed):

@@ -103,7 +103,7 @@ def _gauss_hermite_weights(n_dim: int, order: int = 3) -> Tuple[np.ndarray, np.n
 
     w_1d = np.zeros(shape=(p,))
     for i in range(p):
-        w_1d[i] = (2 ** (p - 1) * np.math.factorial(p) * np.sqrt(np.pi) /
+        w_1d[i] = (2 ** (p - 1) * math.factorial(p) * np.sqrt(np.pi) /
                    (p ** 2 * (np.polyval(hermite_coeff[p - 1],
                                          hermite_roots[i])) ** 2))
 

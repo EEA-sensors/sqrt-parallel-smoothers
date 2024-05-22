@@ -3,6 +3,7 @@ from typing import Optional, Callable, Union
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlag
+from jax.tree_util import tree_map
 
 from parsmooth._base import MVNStandard, MVNSqrt, are_inputs_compatible, FunctionalModel, ConditionalMomentsModel
 from parsmooth._utils import tria, none_or_shift, none_or_concat
@@ -12,7 +13,7 @@ def smoothing(transition_model: Union[FunctionalModel, ConditionalMomentsModel],
               filter_trajectory: Union[MVNSqrt, MVNStandard],
               linearization_method: Callable,
               nominal_trajectory: Optional[Union[MVNSqrt, MVNStandard]] = None):
-    last_state = jax.tree_map(lambda z: z[-1], filter_trajectory)
+    last_state = tree_map(lambda z: z[-1], filter_trajectory)
 
     if nominal_trajectory is not None:
         are_inputs_compatible(filter_trajectory, nominal_trajectory)
@@ -49,7 +50,7 @@ def _standard_smooth(F, Q, b, xf, xs):
     S = F @ Pf @ F.T + Q
     cov_diff = Ps - S
 
-    gain = Pf @ jlag.solve(S, F, sym_pos=True).T
+    gain = Pf @ jlag.solve(S, F, assume_a="pos").T
     ms = mf + gain @ mean_diff
     Ps = Pf + gain @ cov_diff @ gain.T
 
