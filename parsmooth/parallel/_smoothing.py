@@ -3,6 +3,7 @@ from typing import Callable, Optional, Union
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
+from jax.tree_util import tree_map
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible, ConditionalMomentsModel
 from parsmooth._utils import none_or_concat, tria
@@ -46,7 +47,7 @@ def smoothing(transition_model: Union[FunctionalModel, ConditionalMomentsModel],
 def _associative_params(linearization_method, transition_model,
                         nominal_trajectory, filtering_trajectory, sqrt):
     ms, Ps = filtering_trajectory
-    nominal_trajectory = jax.tree_map(lambda z: z[:-1], nominal_trajectory)
+    nominal_trajectory = tree_map(lambda z: z[:-1], nominal_trajectory)
     if sqrt:
         vmapped_fn = jax.vmap(_sqrt_associative_params, in_axes=[None, None, 0, 0, 0])
     else:
@@ -60,7 +61,7 @@ def _standard_associative_params(linearization_method, transition_model, n_k_1, 
     F, Q, b = linearization_method(transition_model, n_k_1)
     Pp = F @ P @ F.T + Q
 
-    E = jlinalg.solve(Pp, F @ P, sym_pos=True).T
+    E = jlinalg.solve(Pp, F @ P, assume_a="pos").T
 
     g = m - E @ (F @ m + b)
     L = P - E @ Pp @ E.T

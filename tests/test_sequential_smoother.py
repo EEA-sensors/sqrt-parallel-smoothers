@@ -56,7 +56,7 @@ def test_smooth_one_value(dim_x, seed, sqrt):
 
     m_ = F @ xf.mean + b
     P_ = F @ xf.cov @ F.T + Q
-    G = xf.cov @ solve(P_.T, F, sym_pos=True).T
+    G = xf.cov @ solve(P_.T, F, assume_a="pos").T
     ms = xf.mean + G @ (xs.mean - m_)
     Ps = xf.cov + G @ (xs.cov - P_) @ G.T
 

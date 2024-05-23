@@ -5,4 +5,4 @@ pytest-cov
 pytest-forked
 pytest-html
 pytest-xdist
-tfp-nightly
+tensorflow-probability

@@ -12,7 +12,7 @@ from parsmooth.sequential._filtering import _sqrt_predict, _standard_predict, _s
 from tests._lgssm import get_data, transition_function as lgssm_f, observation_function as lgssm_h
 from tests._test_utils import get_system
 
-LIST_LINEARIZATIONS = [cubature]
+LIST_LINEARIZATIONS = [cubature, extended]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -76,7 +76,7 @@ def test_update_value(dim_x, dim_y, seed, sqrt):
 
     res = y - H @ x.mean - c
     S = H @ x.cov @ H.T + R
-    K = x.cov @ solve(S, H, sym_pos=True).T
+    K = x.cov @ solve(S, H, assume_a="pos").T
     np.testing.assert_allclose(next_x.mean, x.mean + K @ res, atol=1e-1)
     np.testing.assert_allclose(cov, x.cov - K @ H @ x.cov, atol=1e-5)
 

@@ -3,6 +3,7 @@ from typing import Callable, Optional, Union
 import jax
 import jax.numpy as jnp
 import jax.scipy.linalg as jlinalg
+from jax.tree_util import tree_map
 
 from parsmooth._base import MVNStandard, FunctionalModel, MVNSqrt, are_inputs_compatible, ConditionalMomentsModel
 from parsmooth._utils import tria, none_or_concat, mvn_loglikelihood
@@ -63,8 +64,8 @@ def filtering(observations: jnp.ndarray,
 def _standard_associative_params(linearization_method, transition_model, observation_model,
                                  nominal_trajectory, x0, ys):
     T = ys.shape[0]
-    n_k_1 = jax.tree_map(lambda z: z[:-1], nominal_trajectory)
-    n_k = jax.tree_map(lambda z: z[1:], nominal_trajectory)
+    n_k_1 = tree_map(lambda z: z[:-1], nominal_trajectory)
+    n_k = tree_map(lambda z: z[1:], nominal_trajectory)
 
     m0, P0 = x0
     ms = jnp.concatenate([m0[None, ...], jnp.zeros_like(m0, shape=(T - 1,) + m0.shape)])
@@ -82,7 +83,7 @@ def _standard_associative_params_one(linearization_method, transition_model, obs
     P = F @ P @ F.T + Q
 
     S = H @ P @ H.T + R
-    S_invH = jlinalg.solve(S, H, sym_pos=True)
+    S_invH = jlinalg.solve(S, H, assume_a="pos")
     K = (S_invH @ P).T
     A = F - K @ H @ F
 
@@ -99,8 +100,8 @@ def _standard_associative_params_one(linearization_method, transition_model, obs
 def _sqrt_associative_params(linearization_method, transition_model, observation_model,
                              nominal_trajectory, x0, ys):
     T = ys.shape[0]
-    n_k_1 = jax.tree_map(lambda z: z[:-1], nominal_trajectory)
-    n_k = jax.tree_map(lambda z: z[1:], nominal_trajectory)
+    n_k_1 = tree_map(lambda z: z[:-1], nominal_trajectory)
+    n_k = tree_map(lambda z: z[1:], nominal_trajectory)
 
     m0, L0 = x0
     ms = jnp.concatenate([m0[None, ...], jnp.zeros_like(m0, shape=(T - 1,) + m0.shape)])
