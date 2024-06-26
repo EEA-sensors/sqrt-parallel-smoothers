@@ -1,11 +1,10 @@
 import jax
-import jax.numpy as jnp
 import numpy as np
 import pytest
 import tensorflow_probability.substrates.jax as tfp
 from jax.test_util import check_grads
 
-from parsmooth._utils import _cholesky_update, cholesky_update_many, fixed_point, _qr, qr
+from parsmooth._utils import _cholesky_update, cholesky_update_many, fixed_point
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -53,22 +52,6 @@ def test_cholesky_update_many(multiplier, seed, dim_x):
     cholRes = cholesky_update_many(cholQ, v, multiplier)
 
     np.testing.assert_allclose(cholRes @ cholRes.T, expected, rtol=1e-4)
-
-
-@pytest.mark.parametrize("seed", [0, 1, 2, 3])
-def test_qr(seed):
-    np.random.seed(seed)
-    A = np.random.randn(3, 2)
-    B = np.random.randn(2, 3)
-
-    q, r = _qr(jnp.array(A), True)
-    np.testing.assert_allclose(q @ r, A)
-
-    q, r = _qr(jnp.array(B), True)
-    np.testing.assert_allclose((q @ r), B[:, :2])
-
-    check_grads(qr, (A,), 1, modes=["rev", "fwd"])
-    check_grads(qr, (B,), 1, modes=["rev", "fwd"])
 
 
 def test_fixed_point():
