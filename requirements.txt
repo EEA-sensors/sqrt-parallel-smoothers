@@ -1,5 +1,5 @@
-jax==0.4.28
-jaxlib==0.4.28
+jax==0.4.30
+jaxlib==0.4.30
 numpy==1.26.4
 scipy==1.13.0
 tensorflow-probability==0.24.0
