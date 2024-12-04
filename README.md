@@ -26,6 +26,8 @@ low-level examples can be found in the
 
 ## How to cite
 
+### The paper has been accepted for publication in the SIAM Journal on Scientific Computing. The citation details will be updated once the publication is finalized. 
+
 If you find this work useful, please cite us in the following way:
 
 ```
@@ -36,3 +38,4 @@ Year = {2022},
 Eprint = {arXiv:2207.00426},
 }
 ```
+
