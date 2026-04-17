@@ -9,7 +9,7 @@ quantities
 This code was written by [Adrien Corenflos](https://github.com/AdrienCorenflos)
 and [Fatemeh Yaghoobi](https://github.com/Fatemeh-Yaghoobi) as a companion code for the article
 "Parallel square-root statistical linear regression for inference in nonlinear state space models"
-by Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, and Simo Särkkä, ArXiv link: https://arxiv.org/abs/2207.00426
+by Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, and Simo Särkkä, ArXiv link: [https://arxiv.org/abs/2207.00426](https://arxiv.org/abs/2207.00426), Journal link [https://epubs.siam.org/doi/10.1137/23M156121X](https://epubs.siam.org/doi/10.1137/23M156121X)
 
 ## Installation
 
@@ -30,9 +30,13 @@ If you find this work useful, please cite us in the following way:
 
 ```
 @misc{yaghoobi2022sqrt,
-Author = {Fatemeh Yaghoobi, Adrien Corenflos, Sakira Hassan, Simo S\"arkk\"a},
-Title = {Parallel square-root statistical linear regression for inference in nonlinear state space models},
-Year = {2022},
-Eprint = {arXiv:2207.00426},
+author = {Yaghoobi, Fatemeh and Corenflos, Adrien and Hassan, Sakira and S\"{a}rkk\"{a}, Simo},
+title = {Parallel Square-Root Statistical Linear Regression for Inference in Nonlinear State Space Models},
+journal = {SIAM Journal on Scientific Computing},
+volume = {47},
+number = {2},
+pages = {B454-B476},
+year = {2025},
+doi = {10.1137/23M156121X},
 }
 ```
